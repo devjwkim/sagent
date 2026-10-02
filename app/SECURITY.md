@@ -26,6 +26,8 @@
 
 ## What sagent does
 
+- **First run:** with no accounts, the server creates a random one-time setup token in `SAGENT_HOME/setup_token` (mode 0600) and prints the setup link only to the console that started it. The `/setup` page answers 404 without that token. The token is moved out of the address bar right after the link is opened, masked in the access log, and deleted as soon as the first administrator exists. After that the page is gone for good.
+
 - **Passwords:** hashed with scrypt.
 - **Login:** lockout by IP and by username. Error messages are the same for an unknown user and a wrong password.
 - **Sessions:** the `sagent_session` cookie is HttpOnly and SameSite=Lax, and is Secure behind HTTPS. Sessions are revoked when a password, role or active flag changes.

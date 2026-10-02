@@ -3,8 +3,13 @@
 # command into your PATH. Re-run with --upgrade to update.
 #
 #   curl -fsSL https://raw.githubusercontent.com/devjwkim/sagent/main/app/scripts/install.sh | bash
-#   bash install.sh --service            # also run `sagent web` as a systemd user service
+#   bash install.sh --host 0.0.0.0       # reachable from other machines on the LAN
+#   bash install.sh --no-start           # install only
 #   bash install.sh --source ./dist/sagent-0.1.0-py3-none-any.whl
+#
+# By default the server is started right away (systemd user service when
+# available, otherwise a background process) and a one-time link is printed:
+# open it to create the first administrator in the browser.
 #   bash install.sh --uninstall [--purge]
 set -euo pipefail
 
@@ -12,10 +17,10 @@ SOURCE="git+https://github.com/devjwkim/sagent.git#subdirectory=app"
 PREFIX="${SAGENT_PREFIX:-$HOME/.local/share/sagent}"
 BIN_DIR="${SAGENT_BIN_DIR:-$HOME/.local/bin}"
 EXTRAS=""
-SERVICE=0
+SERVICE=auto
 START=1
 HOST="127.0.0.1"
-PORT="7832"
+PORT="17832"
 UPGRADE=0
 UNINSTALL=0
 PURGE=0
@@ -35,10 +40,11 @@ Options:
   --prefix DIR      install directory for the virtualenv (default: $PREFIX)
   --bin-dir DIR     where to link the \`sagent\` command (default: $BIN_DIR)
   --extras LIST     optional extras, e.g. otel,serve
-  --service         install a systemd user service running \`sagent web\`
-  --host HOST       service bind address (default: $HOST)
-  --port PORT       service port (default: $PORT)
-  --no-start        write the service file but do not enable/start it
+  --host HOST       bind address (default: $HOST; 0.0.0.0 for LAN access)
+  --port PORT       port (default: $PORT)
+  --service         run as a systemd user service (default when available)
+  --no-service      run as a background process instead of a service
+  --no-start        install only; do not start the server
   --upgrade         upgrade an existing installation
   --uninstall       remove the virtualenv, the command link and the service
   --purge           with --uninstall: also delete data in \${SAGENT_HOME:-~/.sagent}
@@ -53,6 +59,7 @@ while [ $# -gt 0 ]; do
     --bin-dir) BIN_DIR="$2"; shift 2 ;;
     --extras) EXTRAS="$2"; shift 2 ;;
     --service) SERVICE=1; shift ;;
+    --no-service) SERVICE=0; shift ;;
     --host) HOST="$2"; shift 2 ;;
     --port) PORT="$2"; shift 2 ;;
     --no-start) START=0; shift ;;
@@ -125,7 +132,10 @@ ln -sf "$VENV/bin/sagent" "$BIN_DIR/sagent"
 say "sagent $("$VENV/bin/sagent" --version | awk '{print $2}') → $BIN_DIR/sagent"
 case ":$PATH:" in *":$BIN_DIR:"*) ;; *) warn "$BIN_DIR is not on your PATH — add it to your shell profile" ;; esac
 
-# --- optional service -------------------------------------------------------------
+# --- start the server ---------------------------------------------------------------
+if [ "$SERVICE" = auto ]; then
+  if command -v systemctl >/dev/null 2>&1 && systemctl --user show-environment >/dev/null 2>&1; then SERVICE=1; else SERVICE=0; fi
+fi
 if [ "$SERVICE" = 1 ]; then
   mkdir -p "$UNIT_DIR"
   cat > "$UNIT" <<UNITFILE
@@ -144,21 +154,47 @@ RestartSec=3
 WantedBy=default.target
 UNITFILE
   say "wrote $UNIT"
-  if [ "$START" = 1 ]; then
-    systemctl --user daemon-reload
-    systemctl --user enable --now sagent.service
-    say "service started: systemctl --user status sagent"
-    command -v loginctl >/dev/null 2>&1 && loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes \
-      || warn "to keep it running after logout: sudo loginctl enable-linger $USER"
-  fi
 fi
 
-WEB_NOTE="sagent web                        # http://$HOST:$PORT"
-if [ "$SERVICE" = 1 ] && [ "$START" = 1 ]; then WEB_NOTE="open http://$HOST:$PORT              # the service is already running"; fi
-cat <<NEXT
+STARTED=0
+if [ "$START" = 1 ]; then
+  if [ "$SERVICE" = 1 ]; then
+    systemctl --user daemon-reload
+    systemctl --user enable sagent.service >/dev/null 2>&1
+    systemctl --user restart sagent.service
+    say "service running: systemctl --user status sagent"
+    if command -v loginctl >/dev/null 2>&1 && ! loginctl show-user "$USER" -p Linger 2>/dev/null | grep -q yes; then
+      warn "to keep it running after logout: sudo loginctl enable-linger $USER"
+    fi
+  else
+    LOG="$PREFIX/web.log"
+    pkill -f "^$VENV/bin/python.* $VENV/bin/sagent web" >/dev/null 2>&1 || true
+    # owner-only: the first-run setup link (an admin-creating token) is printed here
+    ( umask 077; touch "$LOG" ); chmod 600 "$LOG"
+    nohup "$VENV/bin/sagent" web --host "$HOST" --port "$PORT" >>"$LOG" 2>&1 &
+    say "started in the background (log: $LOG)"
+  fi
+  for _ in $(seq 1 40); do
+    if "$VENV/bin/python" -c "import socket,sys; socket.create_connection(('127.0.0.1', $PORT), 1)" >/dev/null 2>&1; then
+      STARTED=1; break
+    fi
+    sleep 0.5
+  done
+  [ "$STARTED" = 1 ] || warn "the server did not answer on port $PORT yet; check the log"
+fi
 
+SHOWN_HOST="$HOST"; [ "$HOST" = "0.0.0.0" ] && SHOWN_HOST="127.0.0.1"
+echo
+if [ "$STARTED" = 1 ] && SETUP_URLS="$("$VENV/bin/sagent" setup-url --host "$HOST" --port "$PORT" 2>/dev/null)"; then
+  say "Open this one-time link to create the administrator:"
+  echo "$SETUP_URLS" | sed 's/^/  /'
+  echo "  (show it again later with: sagent setup-url)"
+elif [ "$STARTED" = 1 ]; then
+  say "sagent is running: http://$SHOWN_HOST:$PORT"
+else
+  cat <<NEXT
 Next steps:
   sagent doctor                     # check tmux / git / claude / codex
-  sagent user create-admin          # first administrator
-  $WEB_NOTE
+  sagent web --port $PORT            # prints a one-time setup link on first run
 NEXT
+fi

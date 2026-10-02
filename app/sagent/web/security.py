@@ -119,7 +119,7 @@ def _check_csrf() -> None:
         abort(400, description="CSRF token missing or invalid. Reload the page and try again.")
 
 
-_PASSWORD_EXEMPT = {"auth.change_password", "auth.logout", "static"}
+_PASSWORD_EXEMPT = {"auth.change_password", "auth.logout", "static", "auth.first_setup"}
 
 
 def init_app(app: Flask) -> None:

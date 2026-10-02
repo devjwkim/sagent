@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 DEFAULT_HOST = "127.0.0.1"
-DEFAULT_PORT = 7832
+DEFAULT_PORT = 17832
 LOOPBACK_HOSTS = {"127.0.0.1", "localhost", "::1"}
 
 

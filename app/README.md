@@ -24,12 +24,24 @@ sagent does not ship its own LLM or coding agent. It runs the agents you already
 
 ## Install
 
-**One-line installer** (Linux / macOS). It creates its own virtualenv in `~/.local/share/sagent` and links `sagent` into `~/.local/bin`:
+**One-line installer** (Linux / macOS):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devjwkim/sagent/main/app/scripts/install.sh | bash
-# options: --service (systemd user service), --extras otel, --port 7832, --upgrade, --uninstall [--purge]
+```
+
+The installer:
+- creates its own virtualenv in `~/.local/share/sagent` and links `sagent` into `~/.local/bin`;
+- **starts the server** on port 17832, as a systemd user service when available or as a background process otherwise;
+- prints a **one-time setup link**. Open it in a browser to create the first administrator.
+
+Everything after that is done in the web UI.
+
+```bash
+# options: --host 0.0.0.0 (LAN access), --port N, --no-start, --no-service, --extras otel,
+#          --upgrade, --uninstall [--purge]
 bash install.sh --help
+sagent setup-url        # show the setup link again (until the first admin exists)
 ```
 
 **pipx**
@@ -51,8 +63,8 @@ pip install dist/sagent-*.whl              # or: bash scripts/install.sh --sourc
 
 ```bash
 sagent doctor               # check tmux / git / claude / codex / playwright
-sagent user create-admin    # first administrator (interactive password prompt)
-sagent web                  # http://127.0.0.1:7832
+sagent web                  # http://127.0.0.1:17832 — prints a one-time setup link on first run
+# or create the first admin in a terminal instead: sagent user create-admin
 ```
 
 With `install.sh --service`, `sagent web` runs as a systemd user service (`systemctl --user status sagent`). To keep it running after you log out, enable lingering for your account: `sudo loginctl enable-linger $USER`.
@@ -84,10 +96,10 @@ The CLI uses the same core as the web UI. It runs on the server with direct data
 Create a personal token under **API 토큰** (account menu). A token is shown once and acts with your project permissions. `read` tokens can only call GET endpoints.
 
 ```bash
-curl -H "Authorization: Bearer $SAGENT_TOKEN" http://127.0.0.1:7832/api/v1/projects
+curl -H "Authorization: Bearer $SAGENT_TOKEN" http://127.0.0.1:17832/api/v1/projects
 curl -X POST -H "Authorization: Bearer $SAGENT_TOKEN" -H "Content-Type: application/json" \
      -d '{"loop": "standard", "task": "Add rate limiting to /login"}' \
-     http://127.0.0.1:7832/api/v1/projects/my-app/loops
+     http://127.0.0.1:17832/api/v1/projects/my-app/loops
 ```
 
 | Method | Path |
@@ -118,7 +130,7 @@ my-project/
 | Variable | Default | Meaning |
 |----------|---------|---------|
 | `SAGENT_HOME` | `~/.sagent` | data directory |
-| `SAGENT_HOST` / `SAGENT_PORT` | `127.0.0.1` / `7832` | bind address |
+| `SAGENT_HOST` / `SAGENT_PORT` | `127.0.0.1` / `17832` | bind address |
 | `SAGENT_TRUST_PROXY` | off | trust `X-Forwarded-*` from one reverse proxy |
 | `SAGENT_SECURE_COOKIES` | off | mark cookies `Secure` (enable behind HTTPS) |
 | `SAGENT_SECRET_KEY` | generated | override the session signing key |

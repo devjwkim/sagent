@@ -1,7 +1,7 @@
 from flask import Blueprint, flash, g, redirect, render_template, request, url_for
 
 from sagent.core import users
-from sagent.core.errors import ValidationError
+from sagent.core.errors import SagentError, ValidationError
 from sagent.web.security import client_ip, login_required, login_user, logout_user, safe_next
 
 bp = Blueprint("auth", __name__)
@@ -22,6 +22,41 @@ def login():
         login_user(user)
         return redirect(safe_next(request.args.get("next")))
     return render_template("login.html", no_users=no_users)
+
+
+@bp.route("/setup", methods=["GET", "POST"])
+def first_setup():
+    """One-time page to create the first admin (needs the setup link's token)."""
+    from flask import abort, current_app, session
+
+    from sagent.core import setup
+
+    home = current_app.config["SAGENT"].home
+    if not setup.needed():
+        abort(404)
+    if request.method == "GET" and request.args.get("token"):
+        # keep the token out of the address bar and browser history
+        session["setup_token"] = request.args["token"]
+        return redirect(url_for("auth.first_setup"))
+    token = session.get("setup_token") or request.form.get("token", "")
+    if not setup.valid(home, token):
+        abort(404)
+    error = None
+    if request.method == "POST":
+        f = request.form
+        if f.get("password", "") != f.get("confirm", ""):
+            error = "비밀번호 확인이 일치하지 않습니다."
+        else:
+            try:
+                admin = setup.complete(home, token, f.get("username", ""), f.get("password", ""),
+                                       f.get("display_name", ""))
+            except SagentError as exc:
+                error = str(exc)
+            else:
+                login_user(admin)
+                flash("관리자 계정을 만들었습니다. 이제 서버 설정에서 프로젝트 경로를 지정하세요.", "ok")
+                return redirect(url_for("admin.server_settings"))
+    return render_template("setup.html", error=error, min_len=users.MIN_PASSWORD_LEN)
 
 
 @bp.post("/logout")

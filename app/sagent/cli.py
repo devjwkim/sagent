@@ -68,6 +68,7 @@ def cmd_web(args) -> int:
             file=sys.stderr,
         )
     app = create_app(cfg)
+    _redact_access_log()
     from sagent.core import users
     from sagent.web import workers
 
@@ -77,9 +78,17 @@ def cmd_web(args) -> int:
     if not args.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
         workers.start()
 
-    if users.count_users() == 0:
-        print("No users yet. Create the first admin with: sagent user create-admin", file=sys.stderr)
-    print(f"sagent {__version__} → http://{cfg.host}:{cfg.port}  (data: {cfg.home})")
+    from sagent.core import setup
+
+    print(f"sagent {__version__} → http://{cfg.host}:{cfg.port}  (data: {cfg.home})", flush=True)
+    token = setup.ensure_token(cfg.home)
+    if token:
+        print("\nFirst run: open this one-time link to create the administrator:", flush=True)
+        print(f"  {setup.url(cfg.host, cfg.port, token)}", flush=True)
+        lan = setup.lan_hint(cfg.host)
+        if lan:
+            print(f"  (from another machine: http://{lan}:{cfg.port}/setup?token={token})", flush=True)
+        print("  or create it in a terminal: sagent user create-admin\n", flush=True)
     if args.waitress:
         from waitress import serve
 
@@ -87,6 +96,24 @@ def cmd_web(args) -> int:
     else:
         app.run(host=cfg.host, port=cfg.port, debug=args.debug, use_reloader=args.debug, threaded=True)
     return 0
+
+
+def _redact_access_log() -> None:
+    """Keep the one-time setup token out of the request log."""
+    import logging
+    import re
+
+    class _Redact(logging.Filter):
+        rx = re.compile(r"(token=)[^&\s\"]+")
+
+        def filter(self, record):
+            if record.args:
+                record.args = tuple(self.rx.sub(r"\1***", a) if isinstance(a, str) else a for a in record.args)
+            if isinstance(record.msg, str):
+                record.msg = self.rx.sub(r"\1***", record.msg)
+            return True
+
+    logging.getLogger("werkzeug").addFilter(_Redact())
 
 
 def cmd_user_create(args, role: str) -> int:
@@ -133,6 +160,24 @@ def cmd_user_reset(args) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 1
     print(f"password reset for '{target.username}' (must change at next login)")
+    return 0
+
+
+def cmd_setup_url(args) -> int:
+    from sagent.core import setup
+
+    cfg = _bootstrap(args)
+    host = args.host or cfg.host
+    port = args.port or cfg.port
+    token = setup.ensure_token(cfg.home)
+    if not token:
+        print("setup is complete (an account exists); log in at "
+              f"http://{'127.0.0.1' if host in ('0.0.0.0', '::') else host}:{port}/login")
+        return 1
+    print(setup.url(host, port, token))
+    lan = setup.lan_hint(host)
+    if lan:
+        print(f"http://{lan}:{port}/setup?token={token}")
     return 0
 
 
@@ -446,6 +491,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("username")
     p.add_argument("--password-stdin", action="store_true")
     p.set_defaults(func=cmd_user_reset)
+
+    su = sub.add_parser("setup-url", help="print the one-time link that creates the first admin")
+    su.add_argument("--host")
+    su.add_argument("--port", type=int)
+    su.set_defaults(func=cmd_setup_url)
 
     doc = sub.add_parser("doctor", help="check the local environment")
     doc.set_defaults(func=cmd_doctor)

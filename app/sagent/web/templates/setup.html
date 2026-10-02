@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}초기 설정{% endblock %}
+{% block public %}
+<section class="card narrow">
+  <h1 class="brand-lg">sagent</h1>
+  <h2>첫 관리자 만들기</h2>
+  <p class="muted small">이 페이지는 설정 링크로만 열리며, 관리자를 만들면 다시 열 수 없습니다.</p>
+  {% if error %}<div class="flash flash-error">{{ error }}</div>{% endif %}
+  <form method="post" class="stack">
+    {% include "_csrf.html" %}
+    <label>아이디 <input name="username" required maxlength="32" autocomplete="username" autofocus value="{{ request.form.get('username', '') }}"></label>
+    <label>표시 이름 <input name="display_name" maxlength="64" value="{{ request.form.get('display_name', '') }}"></label>
+    <label>비밀번호 ({{ min_len }}자 이상, 아이디 포함 불가) <input name="password" type="password" required minlength="{{ min_len }}" autocomplete="new-password"></label>
+    <label>비밀번호 확인 <input name="confirm" type="password" required minlength="{{ min_len }}" autocomplete="new-password"></label>
+    <button type="submit" class="primary">관리자 만들고 시작하기</button>
+  </form>
+</section>
+{% endblock %}

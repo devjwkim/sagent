@@ -4,7 +4,10 @@
 <section class="card narrow">
   <h1 class="brand-lg">sagent</h1>
   {% if no_users %}
-  <p>아직 계정이 없습니다. 서버가 실행 중인 머신에서 첫 관리자를 만드세요.</p>
+  <p>아직 계정이 없습니다. 서버를 시작한 터미널(또는 설치 스크립트)에 표시된 <strong>설정 링크</strong>를 열어 첫 관리자를 만드세요.</p>
+  <p class="muted small">링크를 다시 보려면 서버 머신에서:</p>
+  <pre class="code">sagent setup-url</pre>
+  <p class="muted small">또는 터미널에서 직접 만들기:</p>
   <pre class="code">sagent user create-admin</pre>
   {% else %}
   <form method="post" class="stack">
