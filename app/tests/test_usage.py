@@ -218,3 +218,50 @@ def test_prompt_pages(team_project, new_browser):
     d.login("dev1")
     assert d.get(f"/p/{slug}/prompts").status_code == 200
     assert d.post(f"/p/{slug}/prompts", {"name": "x", "body": "y"}).status_code == 403
+
+
+def test_codex_real_stream_fixture():
+    """Recorded from codex-cli 0.160 without credentials: transient `error`
+    events must not end the run; only `turn.failed` does."""
+    from pathlib import Path
+
+    from sagent.agents.codex import CodexAdapter
+
+    a = CodexAdapter()
+    lines = (Path(__file__).parent / "fixtures" / "codex_0160_unauthenticated.jsonl").read_text().splitlines()
+    types, outcomes = [], []
+    for line in lines:
+        obj = json.loads(line)
+        types += [e.type for e in a.parse(obj)]
+        if a.outcome(obj):
+            outcomes.append(a.outcome(obj))
+        a.render(obj)
+    assert types.count("agent.stop") == 1 and types[-1] == "agent.stop"
+    assert types.count("agent.warning") == 3
+    assert outcomes == [(False, outcomes[0][1])] and "401" in outcomes[0][1]
+    assert a.session_id(json.loads(lines[0])) == "00000000-0000-7000-8000-000000000000"
+
+
+def test_codex_interactive_usage_from_rollout(team_project, tmp_path, monkeypatch):
+    t = team_project
+    monkeypatch.setenv("CODEX_HOME", str(tmp_path / "codex"))
+    run = runs.start_agent(t["dev"], t["project"].slug, "", mode="interactive", provider="codex")
+    day = tmp_path / "codex" / "sessions" / "2026" / "10" / "02"
+    day.mkdir(parents=True)
+    other = day / "rollout-other.jsonl"
+    other.write_text(json.dumps({"type": "session_meta", "payload": {"cwd": "/somewhere/else"}}) + "\n")
+    mine = day / "rollout-mine.jsonl"
+    mine.write_text("\n".join(json.dumps(x) for x in [
+        {"type": "session_meta", "payload": {"cwd": t["project"].path, "id": "x"}},
+        {"type": "turn_context", "payload": {"model": "gpt-5-codex"}},
+        {"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {
+            "input_tokens": 500, "cached_input_tokens": 100, "output_tokens": 50}}}},
+        {"type": "event_msg", "payload": {"type": "token_count", "info": {"total_token_usage": {
+            "input_tokens": 900, "cached_input_tokens": 300, "output_tokens": 80}}}},
+    ]) + "\n")
+    usage.set_price(t["admin"], "gpt-5", "codex", {"input": "1", "output": "10", "cache_read": "0.1"})
+    runs.stop(t["dev"], run.id)
+    rec = db.query_one("SELECT * FROM usage_records WHERE run_id = ?", (run.id,))
+    assert (rec["input_tokens"], rec["output_tokens"], rec["cache_read_tokens"]) == (600, 80, 300)
+    assert rec["model"] == "gpt-5-codex" and rec["cost_source"] == "estimate"
+    assert rec["cost_usd"] == pytest.approx((600 * 1 + 80 * 10 + 300 * 0.1) / 1e6)

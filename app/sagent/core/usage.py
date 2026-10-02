@@ -180,6 +180,54 @@ def transcript_usage(path: Path) -> dict:
     return tot
 
 
+def codex_session_usage(project_path: str, started_at: str, finished_at: str | None) -> dict | None:
+    """Usage of an interactive Codex session, read from its rollout file
+    ($CODEX_HOME/sessions/YYYY/MM/DD/rollout-*.jsonl). Codex cannot be given a
+    session id up front, so the file is matched by working directory and time.
+    Token counts are the cumulative `token_count` totals (last one wins)."""
+    from datetime import datetime as _dt
+
+    base = Path(os.environ.get("CODEX_HOME") or Path.home() / ".codex") / "sessions"
+    if not base.is_dir() or not started_at:
+        return None
+    start = _dt.fromisoformat(started_at).timestamp() - 5
+    end = (_dt.fromisoformat(finished_at).timestamp() if finished_at else _dt.now().timestamp()) + 60
+    want = os.path.realpath(project_path)
+    candidates = sorted((p for p in base.glob("*/*/*/rollout-*.jsonl")
+                         if p.is_file() and not p.is_symlink() and start <= p.stat().st_mtime),
+                        key=lambda p: p.stat().st_mtime)[-50:]
+    for path in reversed(candidates):
+        if path.stat().st_mtime > end + 3600:
+            continue
+        cwd, model, totals = None, "", None
+        try:
+            with open(path, "rb") as fh:
+                for raw in fh:
+                    try:
+                        obj = json.loads(raw)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        continue
+                    payload = obj.get("payload") if isinstance(obj, dict) else None
+                    if not isinstance(payload, dict):
+                        continue
+                    if obj.get("type") == "session_meta":
+                        cwd = payload.get("cwd")
+                    elif obj.get("type") == "turn_context":
+                        model = payload.get("model") or model
+                    elif payload.get("type") == "token_count":
+                        info = payload.get("info") or {}
+                        totals = info.get("total_token_usage") or totals
+        except OSError:
+            continue
+        if not cwd or os.path.realpath(cwd) != want:
+            continue
+        t = totals or {}
+        return {"input": int(t.get("input_tokens") or 0) - int(t.get("cached_input_tokens") or 0),
+                "output": int(t.get("output_tokens") or 0),
+                "cache_read": int(t.get("cached_input_tokens") or 0), "cache_write": 0, "model": model}
+    return None
+
+
 # --- recording ------------------------------------------------------------------
 
 def record_run(run_id: int) -> None:
@@ -199,6 +247,15 @@ def record_run(run_id: int) -> None:
             db.execute(
                 "UPDATE runs SET input_tokens = ?, output_tokens = ?, cache_read_tokens = ?,"
                 " cache_write_tokens = ?, model = ? WHERE id = ?", (i, o, cr, cw, model, run_id))
+    if run.kind == "agent" and run.mode == "interactive" and run.provider == "codex":
+        path = db.scalar("SELECT path FROM projects WHERE id = ?", (run.project_id,))
+        t = codex_session_usage(path, run.started_at, run.finished_at) if path else None
+        if t:
+            i, o, cr, cw = max(t["input"], 0), t["output"], t["cache_read"], 0
+            model = t["model"] or model
+            db.execute(
+                "UPDATE runs SET input_tokens = ?, output_tokens = ?, cache_read_tokens = ?, model = ? WHERE id = ?",
+                (i, o, cr, model, run_id))
     cost, source = run.cost_usd, "agent"
     if cost is None:
         cost = estimate_cost(model, i, o, cr, cw)

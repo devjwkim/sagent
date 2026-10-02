@@ -74,13 +74,20 @@ class CodexAdapter(AgentAdapter):
                 return [Event("agent.file.write", {"files": files[:50]})]
             if it in ("mcp_tool_call", "web_search"):
                 return [Event(f"agent.tool.{phase}", {"tool": item.get("tool") or it})]
+            if it == "error" and phase == "end":
+                return [Event("agent.warning", {"text": short(item.get("message") or "", 500)})]
             return []
         if t == "turn.completed":
             u = self.usage(obj)
             return [Event("agent.usage", u.__dict__), Event("agent.stop", {"is_error": False})] if u else []
-        if t in ("turn.failed", "error"):
-            msg = (obj.get("error") or {}).get("message") if isinstance(obj.get("error"), dict) else obj.get("message")
+        if t == "turn.failed":
+            err = obj.get("error")
+            msg = err.get("message") if isinstance(err, dict) else obj.get("message")
             return [Event("agent.stop", {"is_error": True, "result": short(msg or t, 2000)})]
+        if t == "error":
+            # Codex 0.16x emits top-level `error` for transient problems
+            # (e.g. "Reconnecting... 2/5"); the turn only fails on turn.failed.
+            return [Event("agent.warning", {"text": short(obj.get("message") or "", 500)})]
         return []
 
     def usage(self, obj: dict) -> Usage | None:
@@ -97,9 +104,9 @@ class CodexAdapter(AgentAdapter):
         t = obj.get("type")
         if t == "turn.completed":
             return True, "turn completed"
-        if t in ("turn.failed", "error"):
+        if t == "turn.failed":
             err = obj.get("error")
-            return False, short((err or {}).get("message") if isinstance(err, dict) else (obj.get("message") or t), 500)
+            return False, short(err.get("message") if isinstance(err, dict) else (obj.get("message") or t), 500)
         return None
 
     def final_text(self, obj: dict) -> str | None:
@@ -129,6 +136,10 @@ class CodexAdapter(AgentAdapter):
         if t == "turn.completed":
             u = self.usage(obj)
             return f"■ turn completed · in {u.input_tokens} / out {u.output_tokens}"
-        if t in ("turn.failed", "error"):
+        if t == "turn.failed":
             return f"✗ {self.outcome(obj)[1]}"
+        if t == "error":
+            return f"! {short(obj.get('message') or '', 200)}"
+        if t == "item.completed" and it == "error":
+            return f"! {short(item.get('message') or '', 200)}"
         return None
