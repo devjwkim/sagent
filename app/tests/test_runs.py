@@ -216,3 +216,11 @@ def test_command_prefix_wraps_every_process(team_project):
     assert cmd[:2] == ["env", "SAGENT_SANDBOXED=yes"] and cmd[2] == "claude"
     assert runs.wait(agent.id, timeout=30, poll=0.3).status == "SUCCESS"
     settings.put("runs.command_prefix", "")
+
+
+def test_finished_screen_has_no_dead_pane_trailer(team_project):
+    t = team_project
+    run = runs.wait(runs.start_agent(t["dev"], t["project"].slug, "short task").id, timeout=30, poll=0.3)
+    screen = runs.terminal(t["dev"], run.id)[1]
+    assert "Pane is dead" not in screen
+    assert screen.rstrip().splitlines()[-1].startswith("■ claude exited")

@@ -13,6 +13,7 @@ import subprocess
 from pathlib import Path
 
 SESSION_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,63}$")
+_DEAD_RE = re.compile(r"^Pane is dead( \(.*\))?$")
 WIDTH, HEIGHT = 200, 50
 
 # Keys a user may send from the web UI (everything else is typed literally).
@@ -124,7 +125,14 @@ def capture(name: str, lines: int = 2000) -> str:
     res = _tmux("capture-pane", "-p", "-J", "-S", f"-{int(lines)}", "-t", _pane(name), check=False)
     if res.returncode != 0:
         return ""
-    text = "\n".join(line.rstrip() for line in res.stdout.splitlines()).rstrip()
+    lines = [line.rstrip() for line in res.stdout.splitlines()]
+    # tmux's remain-on-exit trailer sits at the bottom of an otherwise empty
+    # screen; drop it so the real output is what readers (and autoscroll) see.
+    while lines and not lines[-1]:
+        lines.pop()
+    if lines and _DEAD_RE.match(lines[-1]):
+        lines.pop()
+    text = "\n".join(lines).rstrip()
     return text + "\n" if text else ""
 
 

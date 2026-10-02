@@ -367,8 +367,10 @@ def breakdown(dimension: str, days: int = 7, limit: int = 10, **scope) -> list[d
         names = {r["id"]: r["name"] for r in db.query("SELECT id, name FROM projects")}
     out = []
     for r in rows:
-        if dimension in ("user", "project"):
-            label = names.get(r["key"], "system" if dimension == "user" else "-")
+        if dimension == "user":
+            label = names.get(r["key"]) or ("삭제된 사용자" if r["key"] else "system")
+        elif dimension == "project":
+            label = names.get(r["key"], "-")
         else:
             label = r["key"] or "(unknown)"
         out.append({"key": r["key"], "label": label, "runs": r["runs"], "tokens": r["tokens"] or 0,

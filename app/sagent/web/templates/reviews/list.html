@@ -27,7 +27,7 @@
         <td class="small">{{ rr.provider }}</td>
         <td class="small mono">{{ rr.base_ref[:12] }}</td>
         <td class="small">{{ rr.files_changed }}</td>
-        <td class="small">{{ names.get(rr.created_by, 'system') }}</td>
+        <td class="small">{{ (names.get(rr.created_by) or ('삭제된 사용자' if rr.created_by else 'system')) }}</td>
         <td class="small muted nowrap">{{ rr.created_at|ts }}</td>
       </tr>
     {% else %}

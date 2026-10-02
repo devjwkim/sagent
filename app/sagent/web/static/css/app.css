@@ -211,3 +211,8 @@ a.tile { color: inherit; }
 a.tile:hover { border-color: var(--accent); text-decoration: none; }
 .small-value { font-size: 1.15rem; }
 .editor-canvas { width: 100%; height: auto; display: block; }
+button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); }
+.inline-input { padding: .15rem .4rem; }
+pre.wrap-pre { white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow: auto; }
+/* runtime/definition graphs shrink to the card instead of scrolling sideways */
+.graph-wrap svg.loop-graph:not(.editor-canvas) { max-width: 100%; height: auto; }

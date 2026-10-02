@@ -182,6 +182,26 @@ def update(
     return get(user_id)
 
 
+def delete(actor: User, user_id: int) -> None:
+    """Remove an account. History (runs, usage, audit) keeps the numeric id
+    and is shown as a deleted user."""
+    _require_admin(actor)
+    target = get(user_id)
+    if actor.id == user_id:
+        raise Conflict("자기 자신은 삭제할 수 없습니다.")
+    if target.is_admin and target.is_active and _active_admin_count(user_id) == 0:
+        raise Conflict("마지막 활성 관리자는 삭제할 수 없습니다.")
+    sole = db.query(
+        "SELECT p.name FROM project_members m JOIN projects p ON p.id = m.project_id"
+        " WHERE m.user_id = ? AND m.role = 'owner' AND NOT EXISTS (SELECT 1 FROM project_members o"
+        " WHERE o.project_id = m.project_id AND o.role = 'owner' AND o.user_id != m.user_id)", (user_id,))
+    if sole:
+        raise Conflict("유일한 owner 인 프로젝트가 있어 삭제할 수 없습니다: " + ", ".join(r["name"] for r in sole[:5])
+                       + ". 먼저 다른 owner 를 지정하세요.")
+    db.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    audit.record("user.delete", actor, "user", user_id, {"username": target.username})
+
+
 def _set_password(user_id: int, password: str, must_change: bool) -> None:
     db.execute(
         "UPDATE users SET password_hash = ?, must_change_password = ?,"

@@ -6,7 +6,7 @@
     <a class="button" href="{{ url_for('loops.loop_list', slug=g.project.slug) }}">목록</a>
   </div>
   <p class="task-text">{{ lr.task }}</p>
-  <p class="muted small">실행자 {{ names.get(lr.created_by, 'system') }} · 시작 {{ lr.created_at|ts }} UTC</p>
+  <p class="muted small">실행자 {{ (names.get(lr.created_by) or ('삭제된 사용자' if lr.created_by else 'system')) }} · 시작 {{ lr.created_at|ts }} UTC</p>
   {% if can_control %}
   <div class="row gap wrap loop-controls">
     {% for action, label, show in [

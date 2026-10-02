@@ -43,6 +43,13 @@ def user_update(user_id):
         elif action == "role":
             users.update(g.user, user_id, role=f.get("role", ""))
             flash("역할을 변경했습니다.", "ok")
+        elif action == "delete":
+            target = users.get(user_id)
+            users.delete(g.user, user_id)
+            flash(f"사용자 {target.username} 을(를) 삭제했습니다.", "ok")
+        elif action == "display_name":
+            users.update(g.user, user_id, display_name=f.get("display_name", ""))
+            flash("이름을 변경했습니다.", "ok")
     except SagentError as exc:
         flash(str(exc), "error")
     return redirect(url_for("admin.user_list"))

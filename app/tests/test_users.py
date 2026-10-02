@@ -76,3 +76,26 @@ def test_password_change_bumps_epoch(app, make_user):
     u = make_user("kim")
     u2 = users.change_password(u, PASSWORD, "another-long-password")
     assert u2.session_epoch == u.session_epoch + 1
+
+
+def test_delete_user(app, make_user, workspace):
+    from sagent import db
+    from sagent.core import projects
+
+    root = make_user("root1", "admin")
+    alice = make_user("alice")
+    bob = make_user("bob")
+    with pytest.raises(Conflict):
+        users.delete(root, root.id)  # not yourself
+    with pytest.raises(Forbidden):
+        users.delete(alice, bob.id)
+    p = projects.create(root, "P", str(workspace / "proj1"))
+    projects.set_member(root, p.slug, "alice", "owner")
+    projects.remove_member(root, p.slug, root.id)  # alice is now the sole owner
+    with pytest.raises(Conflict, match="유일한 owner"):
+        users.delete(root, alice.id)
+    projects.set_member(root, p.slug, "bob", "owner")
+    users.delete(root, alice.id)
+    assert users.find("alice") is None
+    assert db.scalar("SELECT COUNT(*) FROM project_members WHERE user_id = ?", (alice.id,)) == 0
+    assert users.authenticate("alice", PASSWORD, "203.0.113.7") is None

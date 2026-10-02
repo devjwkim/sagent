@@ -20,7 +20,7 @@
   <dl class="kv small">
     <dt>리뷰어</dt><dd>{{ rr.provider }}</dd>
     <dt>기준</dt><dd><code>{{ rr.base_ref }}</code> · 변경 파일 {{ rr.files_changed }} · diff {{ (rr.diff_bytes / 1024)|round(1) }} KB</dd>
-    <dt>실행자</dt><dd>{{ names.get(rr.created_by, 'system') }}</dd>
+    <dt>실행자</dt><dd>{{ (names.get(rr.created_by) or ('삭제된 사용자' if rr.created_by else 'system')) }}</dd>
     {% if run %}<dt>Run</dt><dd><a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=run.id) }}">#{{ run.id }}</a> · 토큰 {{ run.total_tokens|tokens }} · {{ run.cost_usd|usd }}</dd>{% endif %}
   </dl>
 </section>

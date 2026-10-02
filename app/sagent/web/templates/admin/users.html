@@ -9,7 +9,12 @@
     {% for u in users %}
       <tr>
         <td>{{ u.username }}{% if u.id == current_user.id %} <span class="muted small">(나)</span>{% endif %}</td>
-        <td>{{ u.display_name }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="inline">
+            {% include "_csrf.html" %}<input type="hidden" name="action" value="display_name">
+            <input name="display_name" value="{{ u.display_name }}" maxlength="64" size="12" class="inline-input" aria-label="표시 이름">
+          </form>
+        </td>
         <td>
           <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="inline">
             {% include "_csrf.html" %}
@@ -28,6 +33,13 @@
             <input type="hidden" name="action" value="toggle_active">
             <button type="submit" class="small">{{ '비활성화' if u.is_active else '활성화' }}</button>
           </form>
+          {% if u.id != current_user.id %}
+          <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="inline" data-confirm="{{ u.username }} 계정을 삭제할까요? 실행 기록은 남고 '삭제된 사용자'로 표시됩니다.">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="action" value="delete">
+            <button type="submit" class="small danger">삭제</button>
+          </form>
+          {% endif %}
           <details class="inline-details">
             <summary class="small">비번 초기화</summary>
             <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="row gap">

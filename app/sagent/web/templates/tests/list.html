@@ -27,7 +27,7 @@
         <td><span class="status s-{{ tr.status|lower }}">{{ tr.status }}</span></td>
         <td class="small">{% if tr.total %}<span class="ok-text">{{ tr.passed }} pass</span> · <span class="bad-text">{{ tr.failed }} fail</span>{% if tr.skipped %} · {{ tr.skipped }} skip{% endif %}{% if tr.flaky %} · {{ tr.flaky }} flaky{% endif %}{% else %}-{% endif %}</td>
         <td class="small">{{ tr.duration_ms|duration }}</td>
-        <td class="small">{{ names.get(tr.created_by, 'system') }}</td>
+        <td class="small">{{ (names.get(tr.created_by) or ('삭제된 사용자' if tr.created_by else 'system')) }}</td>
         <td class="small muted nowrap">{{ tr.created_at|ts }}</td>
       </tr>
     {% else %}

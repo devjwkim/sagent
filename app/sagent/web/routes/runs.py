@@ -74,6 +74,7 @@ def run_detail(slug, run_id):
         can_input=rbac.can_control_run(g.user, run.project_id, run.created_by, "terminal.input"),
         keys=["Enter", "Escape", "Tab", "Up", "Down", "C-c", "BSpace"],
         prompt=runs.read_prompt(g.user, run_id) if can_view_terminal else "",
+        response=runs.final_response(g.user, run_id) if can_view_terminal else "",
         attach=" ".join(tmux.attach_argv(run.tmux_session)) if run.tmux_session and run.is_active else "",
     )
 

@@ -31,7 +31,7 @@
         <td><span class="status s-{{ lr.status|lower }}">{{ lr.status }}</span></td>
         <td><code>{{ lr.current_node }}</code></td>
         <td>{{ lr.iteration }}</td>
-        <td class="small">{{ names.get(lr.created_by, 'system') }}</td>
+        <td class="small">{{ (names.get(lr.created_by) or ('삭제된 사용자' if lr.created_by else 'system')) }}</td>
         <td class="small muted nowrap">{{ lr.created_at|ts }}</td>
       </tr>
     {% else %}

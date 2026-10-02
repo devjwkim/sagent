@@ -437,6 +437,30 @@ def terminal(actor, run_id: int, lines: int = 2000) -> tuple[Run, str]:
     return run, screen.read_text(encoding="utf-8", errors="replace") if screen.exists() else ""
 
 
+def final_response(actor, run_id: int, limit: int = 200_000) -> str:
+    """The agent's complete final answer (headless runs), from its raw JSON output."""
+    run, _, _ = get(actor, run_id, "terminal.view")
+    path = run_dir(run.id) / "agent.jsonl"
+    if run.kind != "agent" or not path.exists():
+        return ""
+    adapter = agents.get(run.provider)
+    text = ""
+    with open(path, "rb") as fh:
+        for raw in fh:
+            if len(raw) > MAX_LINE:
+                continue
+            try:
+                obj = json.loads(raw)
+            except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
+                continue
+            if isinstance(obj, dict):
+                try:
+                    text = adapter.final_text(obj) or text
+                except Exception:
+                    continue
+    return text[:limit]
+
+
 def read_prompt(actor, run_id: int) -> str:
     run, _, _ = get(actor, run_id, "terminal.view")
     p = run_dir(run.id) / "prompt.md"
