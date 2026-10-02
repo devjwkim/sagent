@@ -608,6 +608,8 @@ def purge_old_logs(days: int | None = None) -> int:
         if d.is_dir():
             shutil.rmtree(d, ignore_errors=True)
             n += 1
+    # login attempts only matter for the lockout window
+    db.execute("DELETE FROM login_attempts WHERE created_at < ?", (cutoff,))
     # detailed agent/terminal events can contain message text; lifecycle events stay
     db.execute(
         "DELETE FROM events WHERE (type LIKE 'agent.%' OR type LIKE 'terminal.%') AND run_id IN"
