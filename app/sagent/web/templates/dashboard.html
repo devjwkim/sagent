@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}프로젝트{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>프로젝트</h1>
+  {% if can_create %}<a class="button primary" href="{{ url_for('home.project_new') }}">새 프로젝트</a>{% endif %}
+</header>
+{% if items %}
+<div class="grid">
+  {% for p, role in items %}
+  <a class="card project-card" href="{{ url_for('home.project_overview', slug=p.slug) }}">
+    <div class="row-between"><strong>{{ p.name }}</strong><span class="badge">{{ role }}</span></div>
+    <div class="muted small">{{ p.slug }}</div>
+    <div class="row gap small"><span class="pill">{{ p.lifecycle }}</span><span class="pill">{{ p.primary_agent }}</span>
+      {% set s = summaries[p.id] %}{% if s.active_runs %}<span class="status s-running">{{ s.active_runs }} 실행 중</span>{% endif %}</div>
+    {% if p.description %}<p class="small">{{ p.description }}</p>{% endif %}
+    <dl class="kv small card-kv">
+      <dt>Loop</dt><dd>{% if s.loop %}{{ s.loop.loop_name }} <span class="status s-{{ s.loop.status|lower }}">{{ s.loop.status }}</span>{% if s.loop.status in ('RUNNING', 'PAUSED', 'WAITING_USER') %} · {{ s.loop.current_node }}{% endif %}{% else %}-{% endif %}</dd>
+      <dt>마지막 Run</dt><dd>{% if s.run %}#{{ s.run.id }} {{ s.run.provider }} <span class="status s-{{ s.run.status|lower }}">{{ s.run.status }}</span>{% else %}-{% endif %}</dd>
+      <dt>테스트</dt><dd>{% if s.test %}{{ s.test.suite }} <span class="status s-{{ s.test.status|lower }}">{{ s.test.status }}</span>{% if s.test.passed or s.test.failed %} {{ s.test.passed }}/{{ s.test.passed + s.test.failed }}{% endif %}{% else %}-{% endif %}</dd>
+      <dt>리뷰</dt><dd>{% if s.review %}{% if s.review.status == 'RUNNING' %}<span class="status s-running">RUNNING</span>{% else %}<span class="status s-{{ 'success' if s.review.verdict == 'approve' else 'failed' }}">{{ s.review.verdict or s.review.status }}</span>{% endif %}{% else %}-{% endif %}</dd>
+      <dt>7일 사용량</dt><dd>{{ s.tokens_7d|tokens }} 토큰 · {{ s.cost_7d|usd }}</dd>
+    </dl>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<section class="card empty">
+  <p>참여 중인 프로젝트가 없습니다.</p>
+  {% if not can_create %}<p class="muted small">프로젝트 owner 에게 멤버 추가를 요청하거나, 관리자에게 프로젝트 생성 허용 경로를 요청하세요.</p>{% endif %}
+</section>
+{% endif %}
+{% endblock %}

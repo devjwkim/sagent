@@ -1,0 +1,39 @@
+#!/usr/bin/env python3
+"""Fake `npx playwright test` writing the JSON + HTML reporters' output."""
+import json
+import os
+import sys
+
+args = sys.argv[1:]
+if args[:2] != ["playwright", "test"]:
+    print("fake npx: unsupported", args)
+    sys.exit(2)
+out = next((a.split("=", 1)[1] for a in args if a.startswith("--output=")), "test-results")
+os.makedirs(out, exist_ok=True)
+shot = os.path.join(out, "checkout-failed-1.png")
+with open(shot, "wb") as fh:
+    fh.write(bytes.fromhex("89504e470d0a1a0a0000000d4948445200000001000000010806000000"
+                           "1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082"))
+report = {
+    "stats": {"expected": 2, "unexpected": 1, "flaky": 0, "skipped": 0, "duration": 1234},
+    "suites": [{"title": "checkout.spec.ts", "file": "checkout.spec.ts", "specs": [
+        {"title": "login works", "tests": [{"projectName": "chromium", "status": "expected",
+            "results": [{"status": "passed", "duration": 100, "steps": [{"title": "Open page", "duration": 20}]}]}]},
+        {"title": "checkout pays", "tests": [{"projectName": "chromium", "status": "unexpected",
+            "results": [{"status": "failed", "duration": 300,
+                         "error": {"message": "expected 'Paid' got 'Error'", "stack": "at checkout.spec.ts:12"},
+                         "steps": [{"title": "Open page", "duration": 10},
+                                   {"title": "Open payment", "duration": 5, "error": {"message": "timeout"}}],
+                         "attachments": [{"name": "screenshot", "contentType": "image/png", "path": os.path.abspath(shot)}]}]}]},
+    ], "suites": [{"title": "nested", "specs": [
+        {"title": "logout", "tests": [{"projectName": "chromium", "status": "expected",
+            "results": [{"status": "passed", "duration": 50}]}]}]}]}],
+}
+with open(os.environ["PLAYWRIGHT_JSON_OUTPUT_NAME"], "w") as fh:
+    json.dump(report, fh)
+rep = os.environ["PLAYWRIGHT_HTML_REPORT"]
+os.makedirs(rep, exist_ok=True)
+with open(os.path.join(rep, "index.html"), "w") as fh:
+    fh.write("<html><script>window.x=1</script><body>Playwright report</body></html>")
+print("  3 tests: 2 passed, 1 failed")
+sys.exit(1)

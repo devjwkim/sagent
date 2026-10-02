@@ -1,0 +1,39 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+{% if can_run %}
+<section class="card">
+  <h2>AI PR 리뷰 실행</h2>
+  <form method="post" action="{{ url_for('reviews.review_start', slug=g.project.slug) }}" class="row gap wrap">
+    {% include "_csrf.html" %}
+    <label>기준 (base ref) <input name="base_ref" value="HEAD" class="mono" maxlength="100" size="20"></label>
+    <label>리뷰 에이전트
+      <select name="provider"><option value="">review.yaml 설정대로</option>{% for p in providers %}<option>{{ p }}</option>{% endfor %}</select>
+    </label>
+    <button type="submit" class="primary">리뷰</button>
+  </form>
+  <p class="muted small">입력: git diff · 변경/신규 파일 · 최신 lint/typecheck/unit/E2E 결과 · 프로젝트 규칙. 리뷰어는 읽기 전용으로 실행됩니다.</p>
+</section>
+{% endif %}
+<section class="card">
+  <h2>리뷰 기록</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>판정</th><th>C / H / M / L</th><th>리뷰어</th><th>기준</th><th>파일</th><th>실행자</th><th>시작</th></tr></thead>
+    <tbody>
+    {% for rr in items %}
+      <tr>
+        <td><a href="{{ url_for('reviews.review_detail', slug=g.project.slug, review_run_id=rr.id) }}">{{ rr.id }}</a></td>
+        <td>{% if rr.status == 'RUNNING' %}<span class="status s-running">RUNNING</span>{% else %}<span class="status s-{{ 'success' if rr.verdict == 'approve' else 'failed' }}">{{ rr.verdict or rr.status }}</span>{% endif %}{% if rr.loop_run_id %} <span class="pill">loop #{{ rr.loop_run_id }}</span>{% endif %}</td>
+        <td>{% include "reviews/_counts.html" %}</td>
+        <td class="small">{{ rr.provider }}</td>
+        <td class="small mono">{{ rr.base_ref[:12] }}</td>
+        <td class="small">{{ rr.files_changed }}</td>
+        <td class="small">{{ names.get(rr.created_by, 'system') }}</td>
+        <td class="small muted nowrap">{{ rr.created_at|ts }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">아직 리뷰가 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

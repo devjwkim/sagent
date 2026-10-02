@@ -1,0 +1,78 @@
+import pytest
+
+from sagent.core import settings, users
+from sagent.core.errors import Conflict, Forbidden, ValidationError
+
+from conftest import PASSWORD
+
+
+def test_password_policy(app):
+    with pytest.raises(ValidationError):
+        users.create(users.SYSTEM, "dave", "short")
+    with pytest.raises(ValidationError):
+        users.create(users.SYSTEM, "dave", "dave-is-my-password")
+
+
+def test_username_policy(app):
+    for bad in ("A", "Bad Name", "../x", "x" * 40, ""):
+        with pytest.raises(ValidationError):
+            users.create(users.SYSTEM, bad, PASSWORD)
+
+
+def test_password_hash_not_plaintext(app, make_user):
+    from sagent import db
+
+    make_user("erin")
+    stored = db.scalar("SELECT password_hash FROM users WHERE username='erin'")
+    assert PASSWORD not in stored and stored.startswith(("scrypt:", "pbkdf2:"))
+
+
+def test_duplicate_username(app, make_user):
+    make_user("frank")
+    with pytest.raises(Conflict):
+        make_user("frank")
+
+
+def test_member_cannot_manage_users(app, make_user):
+    m = make_user("gina")
+    with pytest.raises(Forbidden):
+        users.create(m, "hank", PASSWORD)
+
+
+def test_last_admin_protected(app, make_user):
+    a = make_user("root1", "admin")
+    with pytest.raises(Conflict):
+        users.update(a, a.id, role="member")
+    with pytest.raises(Conflict):
+        users.update(a, a.id, is_active=False)
+    b = make_user("root2", "admin")
+    users.update(a, b.id, role="member")
+
+
+def test_authenticate_and_lockout(app, make_user):
+    make_user("ivan")
+    assert users.authenticate("ivan", PASSWORD, "203.0.113.1") is not None
+    settings.put("auth.lockout_threshold", "3")
+    for _ in range(3):
+        assert users.authenticate("ivan", "wrong-password!", "203.0.113.2") is None
+    # locked even with the right password, from the same IP
+    assert users.authenticate("ivan", PASSWORD, "203.0.113.2") is None
+    # another IP still works: a username lock needs 3x the threshold (limits lock-out DoS)
+    assert users.authenticate("ivan", PASSWORD, "203.0.113.3") is not None
+    for i in range(6):
+        users.authenticate("ivan", "wrong-password!", f"203.0.113.{10 + i}")
+    assert users.authenticate("ivan", PASSWORD, "203.0.113.50") is None  # distributed guessing → username lock
+    users.clear_lockouts(users.SYSTEM)
+    assert users.authenticate("ivan", PASSWORD, "203.0.113.3") is not None
+
+
+def test_inactive_user_cannot_login(app, make_user):
+    u = make_user("judy")
+    users.update(users.SYSTEM, u.id, is_active=False)
+    assert users.authenticate("judy", PASSWORD, "203.0.113.9") is None
+
+
+def test_password_change_bumps_epoch(app, make_user):
+    u = make_user("kim")
+    u2 = users.change_password(u, PASSWORD, "another-long-password")
+    assert u2.session_epoch == u.session_epoch + 1

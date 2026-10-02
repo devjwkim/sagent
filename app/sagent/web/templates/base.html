@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="csrf-token" content="{{ csrf_token() }}">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "selfRequestsOnly": true}'>
+  <title>{% block title %}sagent{% endblock %} · sagent</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ app_version }}">
+  <script src="{{ url_for('static', filename='vendor/htmx.min.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/app.js') }}?v={{ app_version }}" defer></script>
+  {% block scripts %}{% endblock %}
+</head>
+<body hx-headers='{"X-CSRF-Token": "{{ csrf_token() }}"}'>
+{% if current_user %}
+<div class="shell">
+  <aside class="sidebar">
+    <a class="brand" href="{{ url_for('home.dashboard') }}">sagent</a>
+    <nav>
+      <a href="{{ url_for('home.dashboard') }}" class="{{ 'active' if request.endpoint == 'home.dashboard' }}">프로젝트</a>
+      <a href="{{ url_for('usage.my_usage') }}" class="{{ 'active' if request.endpoint == 'usage.my_usage' }}">내 사용량</a>
+      {% block sidenav %}{% endblock %}
+      {% if current_user.is_admin %}
+      <div class="nav-group">관리</div>
+      <a href="{{ url_for('admin.user_list') }}" class="{{ 'active' if request.endpoint == 'admin.user_list' }}">사용자</a>
+      <a href="{{ url_for('admin.server_settings') }}" class="{{ 'active' if request.endpoint == 'admin.server_settings' }}">서버 설정</a>
+      <a href="{{ url_for('usage.admin_usage') }}" class="{{ 'active' if request.endpoint == 'usage.admin_usage' }}">전체 사용량</a>
+      <a href="{{ url_for('usage.admin_prices') }}" class="{{ 'active' if request.endpoint == 'usage.admin_prices' }}">가격·텔레메트리</a>
+      <a href="{{ url_for('admin.audit_log') }}" class="{{ 'active' if request.endpoint == 'admin.audit_log' }}">감사 로그</a>
+      {% endif %}
+    </nav>
+    <div class="me">
+      <div class="me-name">{{ current_user.label }} <span class="badge">{{ current_user.role }}</span></div>
+      <a href="{{ url_for('auth.change_password') }}">비밀번호 변경</a>
+      <form method="post" action="{{ url_for('auth.logout') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button class="linklike" type="submit">로그아웃</button>
+      </form>
+    </div>
+  </aside>
+  <main class="content">
+    {% include "_flash.html" %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% else %}
+<main class="centered">
+  {% include "_flash.html" %}
+  {% block public %}{% endblock %}
+</main>
+{% endif %}
+</body>
+</html>

@@ -1,0 +1,27 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<div class="row-between">
+  <nav class="tabs">
+    {% for name, text in files.items() %}
+    <a href="{{ url_for('harness.harness_view', slug=g.project.slug, file=name) }}" class="{{ 'active' if name == selected }}">{{ name }}{% if text is none %} <span class="muted">(없음)</span>{% endif %}</a>
+    {% endfor %}
+  </nav>
+  {% if can_bootstrap %}<a class="button" href="{{ url_for('harness.bootstrap_form', slug=g.project.slug) }}">Bootstrap</a>{% endif %}
+</div>
+{% set text = files.get(selected) %}
+<section class="card">
+  {% if selected not in files %}
+    <p class="muted">알 수 없는 파일입니다.</p>
+  {% elif editable[selected] %}
+  <form method="post" action="{{ url_for('harness.harness_save', slug=g.project.slug, name=selected) }}" class="stack">
+    {% include "_csrf.html" %}
+    <textarea name="content" rows="28" spellcheck="false" class="code-editor">{{ text or '' }}</textarea>
+    <div class="row gap"><button type="submit" class="primary">저장</button><span class="muted small">저장 전에 YAML 문법과 스키마를 검증합니다. 비밀값은 넣지 마세요 — 이 파일은 git 에 커밋됩니다.</span></div>
+  </form>
+  {% elif text is none %}
+    <p class="muted">아직 없습니다.</p>
+  {% else %}
+    <pre class="code">{{ text }}</pre>
+  {% endif %}
+</section>
+{% endblock %}

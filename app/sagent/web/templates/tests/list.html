@@ -1,0 +1,39 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between"><h2>테스트 실행</h2>
+    {% if can_run %}<a class="button" href="{{ url_for('tests.test_wizard', slug=g.project.slug) }}">E2E 시나리오 마법사</a>{% endif %}
+  </div>
+  <div class="row gap wrap">
+  {% for suite, cmd in available %}
+    <form method="post" action="{{ url_for('tests.test_start', slug=g.project.slug) }}" class="suite-btn">
+      {% include "_csrf.html" %}
+      <input type="hidden" name="suite" value="{{ suite }}">
+      <button type="submit" {{ 'disabled' if not (cmd and can_run) }} title="{{ cmd or '명령 없음 — Harness 의 tests.yaml 에서 설정' }}">{{ suite }}</button>
+      <code class="small muted">{{ cmd or '(설정 안 됨)' }}</code>
+    </form>
+  {% endfor %}
+  </div>
+</section>
+<section class="card">
+  <h2>실행 기록</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>종류</th><th>상태</th><th>결과</th><th>시간</th><th>실행자</th><th>시작</th></tr></thead>
+    <tbody>
+    {% for tr in test_runs %}
+      <tr>
+        <td><a href="{{ url_for('tests.test_detail', slug=g.project.slug, test_run_id=tr.id) }}">{{ tr.id }}</a></td>
+        <td>{{ tr.suite }}{% if tr.framework %} <span class="muted small">{{ tr.framework }}</span>{% endif %}{% if tr.loop_run_id %} <span class="pill">loop #{{ tr.loop_run_id }}</span>{% endif %}</td>
+        <td><span class="status s-{{ tr.status|lower }}">{{ tr.status }}</span></td>
+        <td class="small">{% if tr.total %}<span class="ok-text">{{ tr.passed }} pass</span> · <span class="bad-text">{{ tr.failed }} fail</span>{% if tr.skipped %} · {{ tr.skipped }} skip{% endif %}{% if tr.flaky %} · {{ tr.flaky }} flaky{% endif %}{% else %}-{% endif %}</td>
+        <td class="small">{{ tr.duration_ms|duration }}</td>
+        <td class="small">{{ names.get(tr.created_by, 'system') }}</td>
+        <td class="small muted nowrap">{{ tr.created_at|ts }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">아직 테스트 실행 기록이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endblock %}

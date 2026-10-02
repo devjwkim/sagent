@@ -1,0 +1,7 @@
+<dl class="kv">
+  <dt>상태</dt><dd><span class="status s-{{ tr.status|lower }}">{{ tr.status }}</span></dd>
+  <dt>명령</dt><dd><code>{{ tr.command }}</code></dd>
+  <dt>결과</dt><dd>{% if tr.total %}전체 {{ tr.total }} · <span class="ok-text">통과 {{ tr.passed }}</span> · <span class="bad-text">실패 {{ tr.failed }}</span> · 건너뜀 {{ tr.skipped }}{% if tr.flaky %} · flaky {{ tr.flaky }}{% endif %}{% elif tr.status == 'RUNNING' %}실행 중…{% else %}개별 결과 없음 (종료 코드 기준){% endif %}</dd>
+  <dt>시간</dt><dd>{{ tr.duration_ms|duration }}</dd>
+  {% if run %}<dt>Run</dt><dd><a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=run.id) }}">#{{ run.id }} 터미널 보기</a></dd>{% endif %}
+</dl>

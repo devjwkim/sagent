@@ -1,0 +1,25 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between"><h2>템플릿 {{ name }}</h2><a class="button" href="{{ url_for('usage.prompt_list', slug=g.project.slug) }}">목록</a></div>
+  {% for v in versions %}
+  <details {{ 'open' if loop.first }} class="version">
+    <summary><strong>v{{ v.version }}</strong> <span class="muted small">{{ v.created_at|ts }}{% if v.note %} · {{ v.note }}{% endif %}</span>
+      {% set s = stats.get(v.version) %}{% if s %} <span class="pill">{{ s.runs }} runs · 성공 {{ (s.ok / s.runs * 100)|round|int }}% · {{ s.avg_cost|usd }}</span>{% endif %}</summary>
+    <pre class="code">{{ v.body }}</pre>
+  </details>
+  {% endfor %}
+</section>
+{% if can_edit %}
+<section class="card">
+  <h2>새 버전 저장</h2>
+  <form method="post" action="{{ url_for('usage.prompt_list', slug=g.project.slug) }}" class="stack">
+    {% include "_csrf.html" %}
+    <input type="hidden" name="name" value="{{ name }}">
+    <textarea name="body" rows="10" required class="code-editor">{{ versions[0].body }}</textarea>
+    <label>메모 <input name="note" maxlength="300"></label>
+    <div><button type="submit" class="primary">v{{ versions[0].version + 1 }} 저장</button></div>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

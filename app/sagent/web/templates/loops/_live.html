@@ -1,0 +1,31 @@
+<section class="card">
+  <div class="row-between">
+    <h2>진행 상황</h2>
+    <div class="row gap"><span class="status s-{{ lr.status|lower }}">{{ lr.status }}</span><span class="muted small">현재 <code>{{ lr.current_node }}</code> · 반복 {{ lr.iteration }}</span></div>
+  </div>
+  {% if lr.error %}<p class="flash flash-error small">{{ lr.error }}</p>{% endif %}
+  <div class="graph-wrap">{% include "loops/_graph.html" %}</div>
+</section>
+<section class="card">
+  <h2>노드 실행 이력</h2>
+  <table class="table small">
+    <thead><tr><th>노드</th><th>방문/시도</th><th>상태</th><th>결과</th><th>Run</th><th>토큰</th><th>시간</th><th>상세</th></tr></thead>
+    <tbody>
+    {% for n in nodes %}
+      {% set r = child_runs.get(n.run_id) if n.run_id else none %}
+      <tr>
+        <td><code>{{ n.node_key }}</code></td>
+        <td>{{ n.visit }}/{{ n.attempt }}</td>
+        <td><span class="status s-{{ n.status|lower }}">{{ n.status }}</span></td>
+        <td>{{ n.outcome }}</td>
+        <td>{% if n.run_id %}<a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=n.run_id) }}">#{{ n.run_id }}</a>{% if r %} <span class="muted">{{ r.provider }}</span>{% endif %}{% endif %}</td>
+        <td>{{ r.total_tokens|tokens if r else '' }}</td>
+        <td class="nowrap">{{ r.duration_ms|duration if r and r.duration_ms else '' }}</td>
+        <td class="wrap-any">{{ n.detail|truncate(160) }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">아직 실행된 노드가 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>

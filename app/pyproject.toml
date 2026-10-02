@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sagent"
+version = "0.1.0.dev0"
+description = "Multi-user control plane for CLI coding agents (Claude Code, Codex CLI): harness, loops, tests, AI review and LLMOps."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.11"
+dependencies = [
+  "Flask>=3.0,<4",
+  "PyYAML>=6.0",
+  "cryptography>=42",
+  "flask-sock>=0.7",
+]
+
+[project.optional-dependencies]
+otel = [
+  "opentelemetry-sdk>=1.25",
+  "opentelemetry-exporter-otlp-proto-http>=1.25",
+]
+serve = ["waitress>=3.0"]
+dev = ["pytest>=8"]
+
+[project.scripts]
+sagent = "sagent.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["sagent*"]
+
+[tool.setuptools.package-data]
+sagent = ["web/templates/**/*", "web/static/**/*", "templates/**/*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

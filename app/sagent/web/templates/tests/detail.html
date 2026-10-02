@@ -1,0 +1,55 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between">
+    <h2>테스트 #{{ tr.id }} · {{ tr.suite }}</h2>
+    <div class="row gap">
+      {% if full and tr.has_report %}<a class="button" href="{{ url_for('tests.test_report', slug=g.project.slug, test_run_id=tr.id) }}" target="_blank" rel="noopener">Playwright HTML Report</a>{% endif %}
+      {% if can_analyze and tr.status == 'FAILED' %}
+      <form method="post" action="{{ url_for('tests.test_analyze', slug=g.project.slug, test_run_id=tr.id) }}">{% include "_csrf.html" %}<button type="submit" class="primary">AI 실패 분석</button></form>
+      {% endif %}
+      {% if can_update_snapshots and tr.framework == 'playwright' and tr.status != 'RUNNING' %}
+      <form method="post" action="{{ url_for('tests.test_update_snapshots', slug=g.project.slug, test_run_id=tr.id) }}" data-confirm="현재 화면을 새 기준 스냅샷으로 저장할까요? (변경은 프로젝트 파일에 기록됩니다)">{% include "_csrf.html" %}<button type="submit">스냅샷 기준 갱신</button></form>
+      {% endif %}
+      <a class="button" href="{{ url_for('tests.test_list', slug=g.project.slug) }}">목록</a>
+    </div>
+  </div>
+  <div {% if tr.status == 'RUNNING' %}hx-get="{{ url_for('tests.test_live', slug=g.project.slug, test_run_id=tr.id) }}" hx-trigger="every 2s" hx-swap="innerHTML"{% endif %}>
+    {% include "tests/_status.html" %}
+  </div>
+</section>
+{% if cases %}
+<section class="card">
+  <h2>테스트 케이스</h2>
+  <table class="table">
+    <thead><tr><th>파일</th><th>테스트</th><th>브라우저</th><th>상태</th><th>시간</th></tr></thead>
+    <tbody>
+    {% for c in cases %}
+      <tr>
+        <td class="small mono">{{ c.file }}</td>
+        <td>
+          {% if c.status in ('failed', 'flaky') or c.steps %}
+          <details {{ 'open' if c.status == 'failed' and loop.index <= 3 }}>
+            <summary>{{ c.title }}</summary>
+            {% if c.steps %}<ol class="steps small">{% for s in c.steps %}<li class="{{ 'bad-text' if s.error }}">{{ s.title }} <span class="muted">{{ s.duration_ms|duration if s.duration_ms is not none else '' }}</span>{% if s.error %} — {{ s.error }}{% endif %}</li>{% endfor %}</ol>{% endif %}
+            {% if c.error and full %}<pre class="code small">{{ c.error }}</pre>{% endif %}
+            {% if full %}{% for a in c.atts %}
+              {% if a.type and a.type.startswith('image/') %}
+                <a href="{{ url_for('tests.test_file', slug=g.project.slug, test_run_id=tr.id, rel=a.rel) }}" target="_blank" rel="noopener"><img class="shot" src="{{ url_for('tests.test_file', slug=g.project.slug, test_run_id=tr.id, rel=a.rel) }}" alt="{{ a.name }}"></a>
+              {% else %}
+                <a class="small" href="{{ url_for('tests.test_file', slug=g.project.slug, test_run_id=tr.id, rel=a.rel) }}" download>{{ a.name }}</a>
+              {% endif %}
+            {% endfor %}{% endif %}
+          </details>
+          {% else %}{{ c.title }}{% endif %}
+        </td>
+        <td class="small">{{ c.project }}</td>
+        <td><span class="status s-{{ 'success' if c.status == 'passed' else ('failed' if c.status == 'failed' else 'paused') }}">{{ c.status }}</span></td>
+        <td class="small nowrap">{{ c.duration_ms|duration if c.duration_ms is not none else '' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

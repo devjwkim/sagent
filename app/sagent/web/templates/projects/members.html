@@ -1,0 +1,62 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <h2>멤버</h2>
+  <table class="table">
+    <thead><tr><th>사용자</th><th>역할</th><th>추가일</th>{% if can_manage %}<th></th>{% endif %}</tr></thead>
+    <tbody>
+    {% for m in members %}
+      <tr>
+        <td>{{ m.display_name or m.username }} <span class="muted small">@{{ m.username }}</span>{% if not m.is_active %} <span class="pill warn">비활성</span>{% endif %}</td>
+        <td>
+          {% if can_manage %}
+          <form method="post" class="inline">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="username" value="{{ m.username }}">
+            <select name="role" data-autosubmit>
+              {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == m.role }}>{{ r }}</option>{% endfor %}
+            </select>
+          </form>
+          {% else %}<span class="badge">{{ m.role }}</span>{% endif %}
+        </td>
+        <td class="small muted">{{ m.created_at }}</td>
+        {% if can_manage %}
+        <td>
+          <form method="post" class="inline" data-confirm="{{ m.username }} 을(를) 프로젝트에서 제거할까요?">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="action" value="remove">
+            <input type="hidden" name="user_id" value="{{ m.user_id }}">
+            <button type="submit" class="small">제거</button>
+          </form>
+        </td>
+        {% endif %}
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% if can_manage %}
+<section class="card">
+  <h2>멤버 추가 / 역할 변경</h2>
+  <p class="flash flash-warn small">developer 이상은 이 서버의 OS 계정 권한으로 에이전트를 실행하고 터미널에 입력할 수 있습니다 (셸 권한과 같음). 신뢰하는 사람에게만 부여하세요.</p>
+  <form method="post" class="row gap">
+    {% include "_csrf.html" %}
+    {% if candidates %}
+    <select name="username" required>
+      <option value="">사용자 선택</option>
+      {% for u in candidates %}<option value="{{ u.username }}">{{ u.label }} (@{{ u.username }})</option>{% endfor %}
+    </select>
+    {% else %}
+    <input name="username" required maxlength="32" placeholder="추가할 사용자의 아이디" autocomplete="off">
+    {% endif %}
+    <select name="role">
+      {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'developer' }}>{{ r }}</option>{% endfor %}
+    </select>
+    <button type="submit" class="primary">저장</button>
+  </form>
+  <dl class="kv small">
+    {% for r in roles %}<dt>{{ r }}</dt><dd>{{ role_labels[r] }}</dd>{% endfor %}
+  </dl>
+</section>
+{% endif %}
+{% endblock %}

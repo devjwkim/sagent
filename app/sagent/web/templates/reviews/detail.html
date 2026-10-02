@@ -1,0 +1,47 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between">
+    <h2>리뷰 #{{ rr.id }}</h2>
+    <a class="button" href="{{ url_for('reviews.review_list', slug=g.project.slug) }}">목록</a>
+  </div>
+  {% if rr.status == 'RUNNING' %}
+    <p><span class="status s-running">RUNNING</span> 리뷰 에이전트가 실행 중입니다. {% if run %}<a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=run.id) }}">Run #{{ run.id }}</a>{% endif %}</p>
+  {% else %}
+  <div class="verdict verdict-{{ rr.verdict }}">{{ 'APPROVE' if rr.verdict == 'approve' else 'REJECT' }}</div>
+  <div class="sev-grid">
+    <div><span class="sev sev-critical">{{ rr.critical }}</span> CRITICAL</div>
+    <div><span class="sev sev-high">{{ rr.high }}</span> HIGH</div>
+    <div><span class="sev sev-medium">{{ rr.medium }}</span> MEDIUM</div>
+    <div><span class="sev sev-low">{{ rr.low }}</span> LOW</div>
+  </div>
+  {% if rr.summary %}<p class="task-text">{{ rr.summary }}</p>{% endif %}
+  {% endif %}
+  <dl class="kv small">
+    <dt>리뷰어</dt><dd>{{ rr.provider }}</dd>
+    <dt>기준</dt><dd><code>{{ rr.base_ref }}</code> · 변경 파일 {{ rr.files_changed }} · diff {{ (rr.diff_bytes / 1024)|round(1) }} KB</dd>
+    <dt>실행자</dt><dd>{{ names.get(rr.created_by, 'system') }}</dd>
+    {% if run %}<dt>Run</dt><dd><a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=run.id) }}">#{{ run.id }}</a> · 토큰 {{ run.total_tokens|tokens }} · {{ run.cost_usd|usd }}</dd>{% endif %}
+  </dl>
+</section>
+{% if issues %}
+<section class="card">
+  <h2>이슈</h2>
+  <table class="table">
+    <thead><tr><th>심각도</th><th>위치</th><th>분류</th><th>내용</th><th>제안</th><th>확신도</th></tr></thead>
+    <tbody>
+    {% for i in issues %}
+      <tr>
+        <td><span class="sev-label sev-{{ i.severity }}">{{ i.severity|upper }}</span></td>
+        <td class="mono small">{{ i.file }}{% if i.line %}:{{ i.line }}{% endif %}</td>
+        <td class="small">{{ i.category }}</td>
+        <td class="small pre-wrap">{{ i.reason }}</td>
+        <td class="small pre-wrap">{{ i.suggested_fix }}</td>
+        <td class="small">{{ (i.confidence * 100)|round|int ~ '%' if i.confidence is not none else '-' }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

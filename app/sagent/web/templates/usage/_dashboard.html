@@ -1,0 +1,75 @@
+{% set t = totals %}
+<div class="tiles">
+  <div class="tile"><div class="tile-label">토큰</div><div class="tile-value">{{ compact(t.tokens) }}</div><div class="tile-sub">입력 {{ compact(t.input) }} · 출력 {{ compact(t.output) }} · 캐시 {{ compact(t.cache_read + t.cache_write) }}</div></div>
+  <div class="tile"><div class="tile-label">비용</div><div class="tile-value">{{ t.cost|usd }}</div><div class="tile-sub">{% if t.estimated %}{{ t.estimated }}건은 가격표 기반 추정{% else %}에이전트 보고값{% endif %}</div></div>
+  <div class="tile"><div class="tile-label">에이전트 시간</div><div class="tile-value">{{ t.agent_ms|duration }}</div><div class="tile-sub">전체 실행 {{ t.duration|duration }}</div></div>
+  <div class="tile"><div class="tile-label">Run</div><div class="tile-value">{{ t.runs }}</div><div class="tile-sub">성공률 {{ ((t.success_rate * 100)|round|int ~ '%') if t.success_rate is not none else '-' }}</div></div>
+</div>
+
+<section class="card">
+  <div class="row-between"><h2>일별 에이전트 토큰</h2>
+    {% if chart.series_present|length > 1 %}
+    <div class="legend">{% for s in chart.series_present %}<span class="legend-item"><span class="swatch sw-{{ s }}"></span>{{ s }}</span>{% endfor %}</div>
+    {% elif chart.series_present %}<span class="muted small">{{ chart.series_present[0] }}</span>{% endif %}
+  </div>
+  <div class="graph-wrap">
+  <svg class="chart" viewBox="0 0 {{ chart.width }} {{ chart.height }}" width="{{ chart.width }}" height="{{ chart.height }}" role="img" aria-label="일별 토큰 사용량">
+    {% for tk in chart.yticks %}
+    <line x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ tk.y }}" y2="{{ tk.y }}" class="grid"/>
+    <text x="{{ chart.left - 6 }}" y="{{ tk.y + 4 }}" class="axis" text-anchor="end">{{ tk.label }}</text>
+    {% endfor %}
+    {% for c in chart.cols %}
+    <g class="col">
+      <title>{{ c.day }} · claude {{ compact(c.values.claude) }} · codex {{ compact(c.values.codex) }} 토큰 · {{ c.cost|usd }}</title>
+      <rect x="{{ c.hit_x }}" y="{{ chart.top }}" width="{{ c.hit_w }}" height="{{ chart.base - chart.top }}" class="hit"/>
+      {% for sg in c.segments %}<rect x="{{ sg.x }}" y="{{ sg.y }}" width="{{ sg.w }}" height="{{ sg.h }}" rx="2" class="mark s-{{ sg.series }}"/>{% endfor %}
+      {% if c.label %}<text x="{{ c.label_x }}" y="{{ chart.base + 18 }}" class="axis" text-anchor="middle">{{ c.label }}</text>{% endif %}
+    </g>
+    {% endfor %}
+    <line x1="{{ chart.left }}" x2="{{ chart.right }}" y1="{{ chart.base }}" y2="{{ chart.base }}" class="baseline"/>
+  </svg>
+  </div>
+  <details class="small"><summary>표로 보기</summary>
+    <table class="table small"><thead><tr><th>날짜</th><th>claude</th><th>codex</th><th>비용</th><th>에이전트 시간</th></tr></thead>
+    <tbody>{% for d in daily %}<tr><td>{{ d.day }}</td><td>{{ d.claude|tokens }}</td><td>{{ d.codex|tokens }}</td><td>{{ d.cost|usd }}</td><td>{{ d.ms|duration }}</td></tr>{% endfor %}</tbody></table>
+  </details>
+</section>
+
+<div class="grid two">
+{% for dim, b in breakdowns.items() %}
+  <section class="card">
+    <h2>{{ {'user': '사용자별', 'project': '프로젝트별', 'model': '모델별', 'role': '역할별', 'provider': '에이전트별'}[dim] }} 토큰</h2>
+    {% if b.rows %}
+    <svg class="chart hbar" viewBox="0 0 {{ b.chart.width }} {{ b.chart.height }}" width="{{ b.chart.width }}" height="{{ b.chart.height }}" role="img" aria-label="{{ dim }} breakdown">
+      {% for r in b.chart.rows %}
+      <g>
+        <title>{{ r.label }} · {{ compact(r.tokens) }} 토큰 · {{ r.cost|usd }} · {{ r.runs }} runs</title>
+        <rect x="0" y="{{ r.y }}" width="{{ b.chart.width }}" height="{{ b.chart.bar_h + 6 }}" class="hit"/>
+        <text x="{{ b.chart.label_w - 8 }}" y="{{ r.text_y }}" class="axis label" text-anchor="end">{{ r.label|truncate(14, true, '…', 0) }}</text>
+        <rect x="{{ r.bar_x }}" y="{{ r.y + 4 }}" width="{{ r.w }}" height="{{ b.chart.bar_h }}" rx="3" class="mark s-claude"/>
+        <text x="{{ r.value_x }}" y="{{ r.text_y }}" class="value">{{ compact(r.tokens) }}</text>
+      </g>
+      {% endfor %}
+    </svg>
+    <table class="table small"><thead><tr><th>{{ dim }}</th><th>Run</th><th>토큰</th><th>비용</th><th>성공률</th></tr></thead><tbody>
+      {% for r in b.rows %}<tr><td>{{ r.label }}</td><td>{{ r.runs }}</td><td>{{ r.tokens|tokens }}</td><td>{{ r.cost|usd }}</td><td>{{ ((r.success_rate * 100)|round|int ~ '%') if r.success_rate is not none else '-' }}</td></tr>{% endfor %}
+    </tbody></table>
+    {% else %}<p class="muted">데이터가 없습니다.</p>{% endif %}
+  </section>
+{% endfor %}
+</div>
+
+<section class="card">
+  <h2>비용 상위 Run</h2>
+  <table class="table small">
+    <thead><tr><th>Run</th><th>제목</th><th>에이전트</th><th>모델</th><th>토큰</th><th>비용</th><th>시간</th><th>상태</th></tr></thead>
+    <tbody>
+    {% for r in top %}
+      <tr><td>#{{ r.run_id }}</td><td>{{ r.title|truncate(60) }}</td><td>{{ r.provider }}</td><td class="mono">{{ r.model }}</td>
+        <td>{{ (r.input_tokens + r.output_tokens + r.cache_read_tokens + r.cache_write_tokens)|tokens }}</td>
+        <td>{{ r.cost_usd|usd }}{% if r.cost_source == 'estimate' %} <span class="muted">추정</span>{% endif %}</td>
+        <td>{{ r.duration_ms|duration }}</td><td><span class="status s-{{ r.status|lower }}">{{ r.status }}</span></td></tr>
+    {% else %}<tr><td colspan="8" class="muted">데이터가 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+</section>

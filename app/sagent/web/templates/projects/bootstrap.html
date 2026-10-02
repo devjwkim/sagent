@@ -1,0 +1,48 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between"><h2>1. 자동 분석 결과</h2>
+    <form method="post" action="{{ url_for('harness.rescan', slug=g.project.slug) }}">{% include "_csrf.html" %}<button type="submit" class="small">다시 분석</button></form>
+  </div>
+  {% include "projects/_scan_summary.html" %}
+</section>
+<form method="post" action="{{ url_for('harness.bootstrap_apply', slug=g.project.slug) }}" class="card stack">
+  {% include "_csrf.html" %}
+  <h2>2. 설정</h2>
+  <div class="grid two">
+    <fieldset>
+      <legend>코딩 에이전트</legend>
+      {% for a in agents %}<label class="check"><input type="radio" name="coding_agent" value="{{ a }}" {{ 'checked' if a == g.project.primary_agent }}> {{ a }}{% if not scan.agents[a] %} <span class="pill warn">미설치</span>{% endif %}</label>{% endfor %}
+    </fieldset>
+    <fieldset>
+      <legend>AI PR 리뷰 에이전트</legend>
+      {% for a in agents %}<label class="check"><input type="radio" name="review_agent" value="{{ a }}" {{ 'checked' if a != g.project.primary_agent }}> {{ a }}</label>{% endfor %}
+      <label class="check"><input type="radio" name="review_agent" value="same"> 코딩 에이전트와 같게</label>
+    </fieldset>
+    <fieldset>
+      <legend>개발 Loop</legend>
+      {% for name, t in templates.items() %}<label class="check"><input type="radio" name="loop" value="{{ name }}" {{ 'checked' if name == 'standard' }}> <strong>{{ name }}</strong> <span class="muted small">{{ t.description }}</span></label>{% endfor %}
+    </fieldset>
+    <fieldset>
+      <legend>E2E (Playwright)</legend>
+      <label class="check"><input type="checkbox" name="e2e" value="1" {{ 'checked' if scan.e2e }}> E2E 사용</label>
+      {% for b in browsers %}<label class="check"><input type="checkbox" name="browsers" value="{{ b }}" {{ 'checked' if b == 'chromium' }}> {{ b }}</label>{% endfor %}
+      <label>Visual regression
+        <select name="visual_regression"><option value="off">Off</option><option value="critical">Critical pages only</option><option value="all">All E2E pages</option></select>
+      </label>
+    </fieldset>
+  </div>
+  <h2>3. 검증 명령</h2>
+  <p class="muted small">Loop 의 test 노드가 이 명령을 프로젝트 디렉터리에서 실행합니다. 서버 OS 계정으로 실행되므로 maintainer 이상만 바꿀 수 있습니다.</p>
+  <div class="grid two">
+    {% for k in ('unit', 'lint', 'typecheck', 'e2e') %}
+    <label>{{ k }} <input name="cmd_{{ k }}" value="{{ scan.commands[k] }}" class="mono" placeholder="(없음)"></label>
+    {% endfor %}
+  </div>
+  {% if existing.values()|select|list %}
+  <label class="check"><input type="checkbox" name="overwrite" value="1"> 기존 .sagent 파일 덮어쓰기
+    <span class="muted small">(현재: {% for k, v in existing.items() if v %}{{ k }} {% endfor %})</span></label>
+  {% endif %}
+  <button type="submit" class="primary">.sagent 생성</button>
+</form>
+{% endblock %}

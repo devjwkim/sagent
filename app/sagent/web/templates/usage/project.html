@@ -1,0 +1,31 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<div class="row-between"><h2>사용량 · 품질</h2>{% include "usage/_range.html" %}</div>
+{% include "usage/_dashboard.html" %}
+{% set q = quality %}
+<section class="card">
+  <h2>품질 지표 <span class="muted small">최근 {{ [days, 30]|max }}일</span></h2>
+  <div class="tiles">
+    <div class="tile"><div class="tile-label">Loop 성공률</div><div class="tile-value">{{ ((q.loop_success * 100)|round|int ~ '%') if q.loop_success is not none else '-' }}</div><div class="tile-sub">{{ q.loops }}회 중 실패 {{ q.loop_failed }}</div></div>
+    <div class="tile"><div class="tile-label">평균 반복</div><div class="tile-value">{{ q.avg_iterations|round(1) if q.avg_iterations is not none else '-' }}</div><div class="tile-sub">성공 Loop 당 비용 {{ q.cost_per_success|usd }}</div></div>
+    <div class="tile"><div class="tile-label">리뷰 reject 율</div><div class="tile-value">{{ ((q.reject_rate * 100)|round|int ~ '%') if q.reject_rate is not none else '-' }}</div><div class="tile-sub">{{ q.reviews }}회 · critical {{ q.critical }} · high {{ q.high }}</div></div>
+    <div class="tile"><div class="tile-label">테스트 통과율</div><div class="tile-value">{{ ((q.test_pass_rate * 100)|round|int ~ '%') if q.test_pass_rate is not none else '-' }}</div><div class="tile-sub">{{ q.tests }}회 · flaky {{ q.flaky }}</div></div>
+  </div>
+  {% if q.nodes %}
+  <table class="table small"><thead><tr><th>노드</th><th>실행</th><th>실패</th><th>실패율</th><th>재시도</th></tr></thead><tbody>
+    {% for n in q.nodes %}<tr><td><code>{{ n.node_key }}</code></td><td>{{ n.n }}</td><td>{{ n.failed }}</td><td>{{ ((n.fail_rate * 100)|round|int ~ '%') if n.fail_rate is not none else '-' }}</td><td>{{ n.retries }}</td></tr>{% endfor %}
+  </tbody></table>
+  {% endif %}
+</section>
+{% if template_stats.values()|select|list %}
+<section class="card">
+  <h2>프롬프트 템플릿 버전별 성과</h2>
+  <table class="table small"><thead><tr><th>템플릿</th><th>버전</th><th>Run</th><th>성공률</th><th>평균 토큰</th><th>평균 비용</th><th>평균 시간</th></tr></thead><tbody>
+  {% for name, rows in template_stats.items() %}{% for s in rows %}
+    <tr><td><a href="{{ url_for('usage.prompt_detail', slug=g.project.slug, name=name) }}">{{ name }}</a></td><td>v{{ s.version }}</td><td>{{ s.runs }}</td>
+      <td>{{ ((s.ok / s.runs * 100)|round|int ~ '%') if s.runs else '-' }}</td><td>{{ s.avg_tokens|tokens }}</td><td>{{ s.avg_cost|usd }}</td><td>{{ s.avg_ms|duration }}</td></tr>
+  {% endfor %}{% endfor %}
+  </tbody></table>
+</section>
+{% endif %}
+{% endblock %}

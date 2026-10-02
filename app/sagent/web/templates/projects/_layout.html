@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{{ g.project.name }}{% endblock %}
+{% block sidenav %}
+<div class="nav-group">{{ g.project.name }}</div>
+{% for ep, label in project_tabs %}
+<a href="{{ url_for(ep, slug=g.project.slug) }}" class="{{ 'active' if request.endpoint == ep }}">{{ label }}</a>
+{% endfor %}
+{% endblock %}
+{% block content %}
+<header class="page-head">
+  <div>
+    <div class="muted small"><a href="{{ url_for('home.dashboard') }}">프로젝트</a> / {{ g.project.slug }}</div>
+    <h1>{{ g.project.name }} {% if g.project.is_archived %}<span class="pill warn">보관됨</span>{% endif %}</h1>
+  </div>
+  <span class="badge" title="{{ role_labels[g.project_role] }}">내 역할: {{ g.project_role }}</span>
+</header>
+{% block project_content %}{% endblock %}
+{% endblock %}

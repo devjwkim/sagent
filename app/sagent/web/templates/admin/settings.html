@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}서버 설정{% endblock %}
+{% block content %}
+<header class="page-head"><h1>서버 설정</h1></header>
+<section class="card">
+  <h2>프로젝트 · 로그인 정책</h2>
+  <form method="post" class="stack">
+    {% include "_csrf.html" %}
+    <label>프로젝트 허용 경로 (한 줄에 하나, 절대 경로)
+      <textarea name="allowed_roots" rows="4" placeholder="/path/to/workspace">{{ allowed_roots }}</textarea>
+    </label>
+    <p class="muted small">member 는 이 경로들의 <em>하위</em> 디렉터리만 프로젝트로 등록할 수 있습니다 (심볼릭 링크는 실제 경로 기준으로 검사합니다). 관리자는 제한이 없습니다.</p>
+    <label class="check"><input type="checkbox" name="member_can_create" value="1" {{ 'checked' if member_can_create }}> member 의 프로젝트 생성 허용</label>
+    <div class="row gap">
+      <label>로그인 실패 잠금 임계값 <input name="auth.lockout_threshold" value="{{ lockout_threshold }}" inputmode="numeric" size="4"></label>
+      <label>잠금 판정 구간(분) <input name="auth.lockout_window_min" value="{{ lockout_window }}" inputmode="numeric" size="4"></label>
+      <label>Run 로그 보존(일, 0=무기한) <input name="runs.log_retention_days" value="{{ retention_days }}" inputmode="numeric" size="4"></label>
+    </div>
+    <button type="submit" class="primary">저장</button>
+  </form>
+</section>
+<section class="card">
+  <h2>로그인 잠금 해제</h2>
+  <form method="post" class="row gap" data-confirm="로그인 실패 기록을 지울까요?">
+    {% include "_csrf.html" %}
+    <input type="hidden" name="action" value="clear_lockouts">
+    <input name="ip" placeholder="IP (비우면 전체)">
+    <button type="submit">해제</button>
+  </form>
+</section>
+<section class="card">
+  <h2>환경 점검 (doctor)</h2>
+  <table class="table small">
+    {% for c in checks %}
+    <tr><td>{{ c.name }}</td><td>{% if c.ok %}<span class="pill ok">OK</span>{% elif c.required %}<span class="pill bad">필수 누락</span>{% else %}<span class="pill warn">없음</span>{% endif %}</td><td class="mono">{{ c.detail }}</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}

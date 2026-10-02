@@ -1,0 +1,41 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between"><h2>Loop 템플릿 라이브러리</h2><a class="button" href="{{ url_for('loops.loop_list', slug=g.project.slug) }}">Loops</a></div>
+  <p class="muted small">기본 템플릿과 조직 구성원이 공유한 Loop 입니다. 추가하면 이 프로젝트의 <code>.sagent/loops.yaml</code> 에 복사됩니다.</p>
+  {% for t in items %}
+  <div class="loop-def">
+    <div class="row-between">
+      <h3>{{ t.name }} {% if t.builtin %}<span class="pill">기본</span>{% else %}<span class="muted small">by {{ names.get(t.created_by, '?') }}</span>{% endif %} <span class="muted small">{{ t.description }}</span></h3>
+      <div class="row gap">
+        {% if can_edit %}
+        <form method="post" class="row gap">{% include "_csrf.html" %}
+          <input type="hidden" name="action" value="add"><input type="hidden" name="template" value="{{ t.name }}">
+          <input name="as_name" placeholder="{{ t.name }}{{ '-copy' if t.name in project_loops }}" size="14" class="mono" maxlength="40">
+          <button type="submit" class="small primary">프로젝트에 추가</button>
+        </form>
+        {% endif %}
+        {% if not t.builtin and (current_user.is_admin or t.created_by == current_user.id) %}
+        <form method="post" data-confirm="템플릿 {{ t.name }} 을(를) 삭제할까요?">{% include "_csrf.html" %}
+          <input type="hidden" name="action" value="delete"><input type="hidden" name="template_id" value="{{ t.id }}">
+          <button type="submit" class="small">삭제</button></form>
+        {% endif %}
+      </div>
+    </div>
+    {% with graph = graphs[t.name] %}<div class="graph-wrap">{% include "loops/_graph.html" %}</div>{% endwith %}
+  </div>
+  {% endfor %}
+</section>
+{% if can_edit and project_loops %}
+<section class="card">
+  <h2>이 프로젝트의 Loop 공유</h2>
+  <form method="post" class="row gap wrap">{% include "_csrf.html" %}
+    <input type="hidden" name="action" value="share">
+    <select name="loop">{% for n in project_loops %}<option>{{ n }}</option>{% endfor %}</select>
+    <input name="template_name" placeholder="템플릿 이름" required maxlength="40" class="mono">
+    <input name="description" placeholder="설명" maxlength="200">
+    <button type="submit" class="primary">조직에 공유</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

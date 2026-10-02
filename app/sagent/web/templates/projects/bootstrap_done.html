@@ -1,0 +1,18 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <h2>Bootstrap 완료</h2>
+  <dl class="kv">
+    <dt>생성</dt><dd>{% for f in result.written %}<code>{{ f }}</code> {% else %}-{% endfor %}</dd>
+    <dt>건너뜀(기존 유지)</dt><dd>{% for f in result.skipped %}<code>{{ f }}</code> {% else %}-{% endfor %}</dd>
+  </dl>
+  <a class="button primary" href="{{ url_for('harness.harness_view', slug=g.project.slug) }}">Harness 보기</a>
+</section>
+{% for name, d in result.docs.items() if d.status == 'exists' %}
+<section class="card">
+  <h2>{{ name }} 제안</h2>
+  <p class="muted small">{{ name }} 이(가) 이미 있어 수정하지 않았습니다. 필요하면 아래 내용을 참고해 직접 반영하세요.</p>
+  <pre class="code">{{ d.suggestion }}</pre>
+</section>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}로그인{% endblock %}
+{% block public %}
+<section class="card narrow">
+  <h1 class="brand-lg">sagent</h1>
+  {% if no_users %}
+  <p>아직 계정이 없습니다. 서버가 실행 중인 머신에서 첫 관리자를 만드세요.</p>
+  <pre class="code">sagent user create-admin</pre>
+  {% else %}
+  <form method="post" class="stack">
+    {% include "_csrf.html" %}
+    <label>아이디 <input name="username" autocomplete="username" required autofocus maxlength="64"></label>
+    <label>비밀번호 <input name="password" type="password" autocomplete="current-password" required></label>
+    <button type="submit" class="primary">로그인</button>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

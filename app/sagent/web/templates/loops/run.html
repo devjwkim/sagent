@@ -1,0 +1,64 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between">
+    <h2>Loop #{{ lr.id }} · {{ lr.loop_name }}</h2>
+    <a class="button" href="{{ url_for('loops.loop_list', slug=g.project.slug) }}">목록</a>
+  </div>
+  <p class="task-text">{{ lr.task }}</p>
+  <p class="muted small">실행자 {{ names.get(lr.created_by, 'system') }} · 시작 {{ lr.created_at|ts }} UTC</p>
+  {% if can_control %}
+  <div class="row gap wrap loop-controls">
+    {% for action, label, show in [
+      ('pause', '일시정지', lr.status == 'RUNNING'),
+      ('resume', '재개', lr.status in ('PAUSED', 'FAILED')),
+      ('retry', '현재 노드 재시도', lr.status in ('PAUSED', 'FAILED')),
+      ('skip', '현재 노드 건너뛰기', lr.status in ('PAUSED', 'FAILED')),
+      ('stop', '중지', lr.is_active),
+    ] if show %}
+    <form method="post" action="{{ url_for('loops.loop_control', slug=g.project.slug, loop_run_id=lr.id) }}" class="row gap" {% if action == 'stop' %}data-confirm="Loop 를 중지할까요?"{% endif %}>
+      {% include "_csrf.html" %}
+      <input type="hidden" name="action" value="{{ action }}">
+      {% if action in ('resume', 'retry') %}
+      <select name="provider" title="에이전트 전환"><option value="">같은 에이전트</option>{% for p in providers %}<option value="{{ p }}">{{ p }} 로 전환</option>{% endfor %}</select>
+      {% endif %}
+      <button type="submit" class="{{ 'primary' if action in ('resume', 'retry') }}">{{ label }}</button>
+    </form>
+    {% endfor %}
+    {% if lr.status in ('PAUSED', 'FAILED') %}
+    <form method="post" action="{{ url_for('loops.loop_control', slug=g.project.slug, loop_run_id=lr.id) }}" class="row gap">
+      {% include "_csrf.html" %}
+      <input type="hidden" name="action" value="take_control">
+      <button type="submit" title="마지막 에이전트 세션을 이어서 대화형 터미널로 엽니다">직접 개입 (Take Control)</button>
+    </form>
+    {% endif %}
+    {% if lr.status in ('PAUSED', 'FAILED', 'SUCCESS', 'CANCELLED') %}
+    <form method="post" action="{{ url_for('loops.loop_control', slug=g.project.slug, loop_run_id=lr.id) }}" class="row gap">
+      {% include "_csrf.html" %}
+      <input type="hidden" name="action" value="rerun_from">
+      <select name="node">{% for k in lr.spec.nodes %}<option>{{ k }}</option>{% endfor %}</select>
+      <button type="submit">여기서부터 다시</button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+  {% if lr.status == 'WAITING_USER' %}
+  <div class="flash flash-warn">
+    사람이 직접 개입 중입니다 —
+    {% if lr.ctx.manual_run_id %}<a href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=lr.ctx.manual_run_id, take=1) }}">대화형 세션 #{{ lr.ctx.manual_run_id }} 열기</a>{% endif %}
+  </div>
+  {% if can_control %}
+  <form method="post" action="{{ url_for('loops.loop_control', slug=g.project.slug, loop_run_id=lr.id) }}" class="stack">
+    {% include "_csrf.html" %}
+    <input type="hidden" name="action" value="return">
+    <label>다음 에이전트에게 남길 메모 (선택) <textarea name="note" rows="2" maxlength="4000" placeholder="예: 결제 모듈은 직접 고쳤으니 테스트만 맞춰주세요"></textarea></label>
+    <div class="row gap"><label>재개할 노드 <select name="node"><option value="">현재 노드 ({{ lr.current_node }})</option>{% for k in lr.spec.nodes %}<option>{{ k }}</option>{% endfor %}</select></label>
+      <button type="submit" class="primary">자동화로 복귀</button></div>
+  </form>
+  {% endif %}
+  {% endif %}
+</section>
+<div id="loop-live" {% if lr.is_active %}hx-get="{{ url_for('loops.loop_run_live', slug=g.project.slug, loop_run_id=lr.id) }}" hx-trigger="every 2s" hx-swap="innerHTML"{% endif %}>
+  {% include "loops/_live.html" %}
+</div>
+{% endblock %}

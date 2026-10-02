@@ -1,0 +1,12 @@
+<dl class="kv">
+  <dt>언어</dt><dd>{{ scan.languages|join(', ') or '감지 안 됨' }}</dd>
+  <dt>프레임워크</dt><dd>{{ scan.frameworks|join(', ') or '-' }}</dd>
+  <dt>Unit Test</dt><dd>{{ scan.unit_test or '설정 안 됨' }}</dd>
+  <dt>E2E</dt><dd>{{ scan.e2e or '설정 안 됨' }}</dd>
+  <dt>Git</dt><dd>{% if scan.git.detected %}감지됨{% if scan.git.branch %} · <code>{{ scan.git.branch }}</code>{% endif %}{% if scan.git.dirty %} · <span class="pill warn">변경 있음</span>{% endif %}{% else %}<span class="pill warn">없음</span>{% endif %}</dd>
+  <dt>CI</dt><dd>{{ scan.ci|join(', ') or '-' }}</dd>
+  <dt>에이전트 파일</dt><dd>{% for k, v in scan.agent_files.items() if v %}<code>{{ k }}</code> {% else %}-{% endfor %}</dd>
+  <dt>Claude Code</dt><dd>{% if scan.agents.claude %}<span class="pill ok">사용 가능</span>{% else %}<span class="pill warn">미설치</span>{% endif %}</dd>
+  <dt>Codex</dt><dd>{% if scan.agents.codex %}<span class="pill ok">사용 가능</span>{% else %}<span class="pill warn">미설치</span>{% endif %}</dd>
+  <dt>.sagent</dt><dd>{{ '있음' if scan.sagent_config else '없음' }}</dd>
+</dl>

@@ -1,0 +1,33 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+<form method="post" class="card stack">
+  {% include "_csrf.html" %}
+  <h2>E2E 시나리오 마법사</h2>
+  <p class="muted small">선택한 시나리오로 코딩 에이전트가 Playwright 테스트를 작성하고 한 번 실행해 검증합니다. 애플리케이션 코드는 바꾸지 않도록 지시합니다.</p>
+  <div class="grid two">
+    <fieldset>
+      <legend>감지된 페이지 ({{ pages|length }})</legend>
+      {% for p in pages %}<label class="check"><input type="checkbox" name="page" value="{{ p }}" checked> <code>{{ p }}</code></label>
+      {% else %}<p class="muted small">자동으로 찾은 페이지가 없습니다. 아래 시나리오만으로도 진행할 수 있습니다.</p>{% endfor %}
+    </fieldset>
+    <fieldset>
+      <legend>테스트 시나리오</legend>
+      {% for s in defaults %}<label class="check"><input type="checkbox" name="scenario" value="{{ s }}" {{ 'checked' if loop.index <= 3 }}> {{ s }}</label>{% endfor %}
+      <label>직접 추가 (한 줄에 하나) <textarea name="custom" rows="3" placeholder="예: 장바구니에 상품 2개 담고 수량 변경"></textarea></label>
+    </fieldset>
+    <fieldset>
+      <legend>브라우저</legend>
+      {% for b in browsers %}<label class="check"><input type="checkbox" name="browsers" value="{{ b }}" {{ 'checked' if b in (e2e.browsers or ['chromium']) }}> {{ b }}</label>{% endfor %}
+      <label class="check"><input type="checkbox" name="mobile" value="1"> 모바일 viewport</label>
+    </fieldset>
+    <fieldset>
+      <legend>Visual regression</legend>
+      {% for v, label in [('off', 'Off'), ('critical', 'Critical pages only'), ('all', 'All E2E pages')] %}
+      <label class="check"><input type="radio" name="visual" value="{{ v }}" {{ 'checked' if (e2e.visual_regression or 'off') == v }}> {{ label }}</label>{% endfor %}
+      <label>Base URL (선택) <input name="base_url" placeholder="http://localhost:3000" class="mono"></label>
+    </fieldset>
+  </div>
+  {% if not can_edit_harness %}<p class="muted small">tests.yaml 의 E2E 설정은 maintainer 이상만 바꿀 수 있어, 테스트 파일 생성만 요청합니다.</p>{% endif %}
+  <div><button type="submit" class="primary">테스트 생성 시작</button></div>
+</form>
+{% endblock %}

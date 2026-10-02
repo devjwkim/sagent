@@ -1,0 +1,62 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+{% if can_start and defs %}
+<section class="card">
+  <h2>Loop 실행</h2>
+  <form method="post" action="{{ url_for('loops.loop_start', slug=g.project.slug) }}" class="stack">
+    {% include "_csrf.html" %}
+    <textarea name="task" rows="4" placeholder="개발 Task — 예: 회원가입 폼에 이메일 중복 검사를 추가" required></textarea>
+    <div class="row gap wrap">
+      <label>Loop
+        <select name="loop">{% for name in defs %}<option value="{{ name }}" {{ 'selected' if name == default }}>{{ name }}</option>{% endfor %}</select>
+      </label>
+      <label>코딩 에이전트 (선택)
+        <select name="provider"><option value="">Harness 설정대로</option>{% for p in providers %}<option>{{ p }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <div><button type="submit" class="primary">시작</button></div>
+  </form>
+</section>
+{% endif %}
+<section class="card">
+  <h2>Loop 실행 기록</h2>
+  <table class="table">
+    <thead><tr><th>#</th><th>Loop</th><th>Task</th><th>상태</th><th>현재 노드</th><th>반복</th><th>실행자</th><th>시작</th></tr></thead>
+    <tbody>
+    {% for lr in loop_runs %}
+      <tr>
+        <td><a href="{{ url_for('loops.loop_run', slug=g.project.slug, loop_run_id=lr.id) }}">{{ lr.id }}</a></td>
+        <td>{{ lr.loop_name }}</td>
+        <td><a href="{{ url_for('loops.loop_run', slug=g.project.slug, loop_run_id=lr.id) }}">{{ lr.task|truncate(60) }}</a></td>
+        <td><span class="status s-{{ lr.status|lower }}">{{ lr.status }}</span></td>
+        <td><code>{{ lr.current_node }}</code></td>
+        <td>{{ lr.iteration }}</td>
+        <td class="small">{{ names.get(lr.created_by, 'system') }}</td>
+        <td class="small muted nowrap">{{ lr.created_at|ts }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="8" class="muted">아직 실행한 Loop 가 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+<section class="card">
+  <div class="row-between"><h2>Loop 정의 <span class="muted small">.sagent/loops.yaml</span></h2>
+    {% if can_edit %}<div class="row gap"><a class="button primary" href="{{ url_for('loops.loop_editor', slug=g.project.slug) }}">새 Loop</a><a class="button" href="{{ url_for('loops.loop_library', slug=g.project.slug) }}">템플릿 라이브러리</a><a class="button" href="{{ url_for('harness.harness_view', slug=g.project.slug, file='loops.yaml') }}">YAML 편집</a></div>{% endif %}
+  </div>
+  {% for name, spec in defs.items() %}
+  <div class="loop-def">
+    <div class="row-between"><h3>{{ name }}{% if name == default %} <span class="pill">default</span>{% endif %} <span class="muted small">{{ spec.description or '' }} · 최대 반복 {{ spec.max_iterations or 5 }}</span></h3>
+    {% if can_edit %}<div class="row gap"><a class="button small" href="{{ url_for('loops.loop_editor', slug=g.project.slug, name=name) }}">시각 편집</a>
+      <form method="post" action="{{ url_for('loops.loop_editor_delete', slug=g.project.slug, name=name) }}" data-confirm="Loop {{ name }} 을(를) 삭제할까요?">{% include "_csrf.html" %}<button type="submit" class="small">삭제</button></form></div>{% endif %}</div>
+    {% if name in errors %}
+      <ul class="flash flash-error small">{% for e in errors[name] %}<li>{{ e }}</li>{% endfor %}</ul>
+    {% else %}
+      {% with graph = graphs[name] %}<div class="graph-wrap">{% include "loops/_graph.html" %}</div>{% endwith %}
+    {% endif %}
+  </div>
+  {% else %}
+  <p class="muted">loops.yaml 이 없습니다. Bootstrap 을 실행하세요.</p>
+  {% endfor %}
+</section>
+{% endblock %}

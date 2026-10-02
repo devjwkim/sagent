@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}사용자{% endblock %}
+{% block content %}
+<header class="page-head"><h1>사용자</h1></header>
+<section class="card">
+  <table class="table">
+    <thead><tr><th>아이디</th><th>이름</th><th>역할</th><th>상태</th><th>마지막 로그인</th><th>작업</th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td>{{ u.username }}{% if u.id == current_user.id %} <span class="muted small">(나)</span>{% endif %}</td>
+        <td>{{ u.display_name }}</td>
+        <td>
+          <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="inline">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="action" value="role">
+            <select name="role" data-autosubmit>
+              {% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == u.role }}>{{ r }}</option>{% endfor %}
+            </select>
+          </form>
+        </td>
+        <td>{% if u.is_active %}<span class="pill ok">활성</span>{% else %}<span class="pill warn">비활성</span>{% endif %}
+            {% if u.must_change_password %}<span class="pill">비번변경대기</span>{% endif %}</td>
+        <td class="small muted">{{ u.last_login_at or '-' }}</td>
+        <td class="row gap">
+          <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="inline" data-confirm="{{ u.username }} 상태를 바꿀까요?">
+            {% include "_csrf.html" %}
+            <input type="hidden" name="action" value="toggle_active">
+            <button type="submit" class="small">{{ '비활성화' if u.is_active else '활성화' }}</button>
+          </form>
+          <details class="inline-details">
+            <summary class="small">비번 초기화</summary>
+            <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="row gap">
+              {% include "_csrf.html" %}
+              <input type="hidden" name="action" value="reset_password">
+              <input name="password" type="password" autocomplete="new-password" placeholder="임시 비밀번호" required minlength="10">
+              <button type="submit" class="small">초기화</button>
+            </form>
+          </details>
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+<section class="card">
+  <h2>사용자 추가</h2>
+  <form method="post" class="row gap wrap">
+    {% include "_csrf.html" %}
+    <input name="username" placeholder="아이디" required maxlength="32" autocomplete="off">
+    <input name="display_name" placeholder="표시 이름" maxlength="64">
+    <input name="password" type="password" placeholder="임시 비밀번호 (10자 이상)" required minlength="10" autocomplete="new-password">
+    <select name="role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'member' }}>{{ r }}</option>{% endfor %}</select>
+    <button type="submit" class="primary">추가</button>
+  </form>
+  <p class="muted small">새 사용자는 첫 로그인 때 비밀번호를 바꿔야 합니다. 프로젝트 접근 권한은 각 프로젝트의 멤버 화면에서 부여합니다.</p>
+</section>
+{% endblock %}

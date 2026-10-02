@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""Fake Claude Code CLI for tests (stream-json subset)."""
+import json
+import os
+import sys
+import time
+
+
+def out(obj):
+    print(json.dumps(obj), flush=True)
+
+
+args = sys.argv[1:]
+if "--version" in args:
+    print("9.9.9 (Fake Claude)")
+    sys.exit(0)
+if "-p" not in args:  # interactive: echo lines until "exit"
+    print("fake-claude interactive ready", flush=True)
+    for line in sys.stdin:
+        line = line.strip()
+        print(f"you said: {line}", flush=True)
+        if line == "exit":
+            sys.exit(0)
+    sys.exit(0)
+prompt = sys.stdin.read()
+sid = args[args.index("--session-id") + 1] if "--session-id" in args else (
+    args[args.index("--resume") + 1] if "--resume" in args else "sess-1")
+out({"type": "system", "subtype": "init", "session_id": sid, "model": "claude-test"})
+if "SLEEP" in prompt:
+    time.sleep(60)
+if "NAP" in prompt:
+    time.sleep(2)
+import re
+for name in re.findall(r"MAKEFILE=([\w.-]+)", prompt):
+    open(name, "w").write("x")
+if "Previous verification failed" in prompt:
+    for name in re.findall(r"FIXFILE=([\w.-]+)", prompt):
+        open(name, "w").write("fixed")
+for name in re.findall(r"BUGFILE=([\w.-]+)", prompt):
+    open(name, "w").write("XXBUGXX\n")
+if "Code review requested changes" in prompt:
+    for name in re.findall(r"RMFILE=([\w.-]+)", prompt):
+        if os.path.exists(name):
+            os.remove(name)
+if "You are a strict senior code reviewer" in prompt:
+    mode = args[args.index("--permission-mode") + 1] if "--permission-mode" in args else "none"
+    if "GARBAGE" in prompt:
+        text = "I could not decide, sorry."
+    elif "XXBUGXX" in prompt:
+        text = "```json\n" + json.dumps({"verdict": "reject", "summary": f"found a bug (mode={mode})", "issues": [
+            {"severity": "high", "file": "bug.txt", "line": 1, "category": "bug",
+             "reason": "contains XXBUGXX", "suggested_fix": "remove it", "confidence": 0.9}]}) + "\n```"
+    elif "MEDIUMISSUE" in prompt:
+        text = json.dumps({"verdict": "approve", "summary": "minor", "issues": [
+            {"severity": "medium", "file": "a.py", "line": "7", "reason": "naming", "confidence": 3}]})
+    else:
+        text = json.dumps({"verdict": "approve", "summary": f"looks good (mode={mode})", "issues": []})
+    out({"type": "result", "subtype": "success", "is_error": False, "num_turns": 1, "result": text,
+         "session_id": sid, "total_cost_usd": 0.001, "usage": {"input_tokens": 10, "output_tokens": 5}})
+    sys.exit(0)
+leak = os.environ.get("SAGENT_SECRET_KEY", "")
+out({"type": "assistant", "message": {"content": [
+    {"type": "text", "text": f"working on: {prompt[:60]} secret={leak}"},
+    {"type": "tool_use", "id": "t1", "name": "Bash", "input": {"command": "ls -la"}},
+    {"type": "tool_use", "id": "t2", "name": "Edit", "input": {"file_path": "src/app.py"}},
+]}})
+out({"type": "user", "message": {"content": [{"type": "tool_result", "tool_use_id": "t1"}]}})
+fail = "FAIL" in prompt
+out({"type": "result", "subtype": "error_during_execution" if fail else "success", "is_error": fail,
+     "num_turns": 2, "result": "all done" if not fail else "it broke", "session_id": sid,
+     "total_cost_usd": 0.0123,
+     "usage": {"input_tokens": 100, "output_tokens": 20, "cache_read_input_tokens": 5,
+               "cache_creation_input_tokens": 1},
+     "modelUsage": {"claude-test": {}}})
+sys.exit(1 if fail else 0)

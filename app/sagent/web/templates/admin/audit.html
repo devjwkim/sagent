@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}감사 로그{% endblock %}
+{% block content %}
+<header class="page-head"><h1>감사 로그</h1>
+  <form method="get" class="row gap">
+    <input name="action" value="{{ request.args.get('action', '') }}" placeholder="action 접두어 (예: auth.)">
+    <input name="user" value="{{ request.args.get('user', '') }}" placeholder="사용자">
+    <button type="submit">필터</button>
+  </form>
+</header>
+<section class="card">
+  <table class="table small">
+    <thead><tr><th>시각(UTC)</th><th>사용자</th><th>action</th><th>대상</th><th>요청</th><th>IP</th><th>상세</th></tr></thead>
+    <tbody>
+    {% for r in rows %}
+      <tr>
+        <td class="nowrap">{{ r.created_at }}</td>
+        <td>{{ r.username or '-' }}</td>
+        <td><code>{{ r.action }}</code></td>
+        <td>{{ r.target_type }}{% if r.target_id %}:{{ r.target_id }}{% endif %}</td>
+        <td>{% if r.method %}{{ r.method }} {{ r.path }} → {{ r.status }}{% endif %}</td>
+        <td>{{ r.ip }}</td>
+        <td class="mono wrap-any">{{ r.detail }}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="7" class="muted">기록이 없습니다.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <div class="row gap">
+    {% if page > 1 %}<a href="{{ url_for('admin.audit_log', page=page-1, action=request.args.get('action',''), user=request.args.get('user','')) }}">← 이전</a>{% endif %}
+    {% if rows|length == 100 %}<a href="{{ url_for('admin.audit_log', page=page+1, action=request.args.get('action',''), user=request.args.get('user','')) }}">다음 →</a>{% endif %}
+  </div>
+</section>
+{% endblock %}

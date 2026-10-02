@@ -1,0 +1,19 @@
+<svg class="loop-graph" viewBox="0 0 {{ graph.width }} {{ graph.height }}" width="{{ graph.width }}" height="{{ graph.height }}" role="img" aria-label="loop graph">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" class="arrowhead"/>
+    </marker>
+  </defs>
+  {% for e in graph.edges %}
+  <path d="{{ e.path }}" class="edge edge-{{ e.when }}{{ ' back' if e.back }}" marker-end="url(#arrow)"/>
+  {% if e.label %}<text x="{{ e.lx }}" y="{{ e.ly }}" class="edge-label edge-label-{{ e.when }}" text-anchor="middle">{{ e.label }}</text>{% endif %}
+  {% endfor %}
+  {% for n in graph.nodes %}
+  <g class="node node-{{ n.type }} st-{{ n.status }}">
+    <rect x="{{ n.x }}" y="{{ n.y }}" width="{{ n.w }}" height="{{ n.h }}" rx="8"/>
+    <text x="{{ n.x + 10 }}" y="{{ n.y + 20 }}" class="node-title">{{ n.key }}</text>
+    <text x="{{ n.x + 10 }}" y="{{ n.y + 37 }}" class="node-sub">{{ n.type }}{% if n.sub %} · {{ n.sub }}{% endif %}{% if n.attempts > 1 %} · ×{{ n.attempts }}{% endif %}</text>
+    {% if n.status != 'waiting' %}<text x="{{ n.x + n.w - 8 }}" y="{{ n.y + 20 }}" class="node-status" text-anchor="end">{{ n.status|upper }}</text>{% endif %}
+  </g>
+  {% endfor %}
+</svg>

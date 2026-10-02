@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}가격 · 텔레메트리{% endblock %}
+{% block content %}
+<header class="page-head"><h1>모델 가격 · 텔레메트리</h1></header>
+<section class="card">
+  <h2>OpenTelemetry</h2>
+  <form method="post" action="{{ url_for('usage.admin_telemetry') }}" class="stack">
+    {% include "_csrf.html" %}
+    <label>OTLP endpoint (HTTP) <input name="otel_endpoint" value="{{ otel_endpoint }}" placeholder="https://otel.example.com:4318" class="mono"></label>
+    <label>OTLP headers (암호화 저장, 다시 입력해야 변경) <input name="otel_headers" type="password" autocomplete="off" placeholder="authorization=Bearer …"></label>
+    <label class="check"><input type="checkbox" name="clear_headers" value="1"> 저장된 header 지우기</label>
+    <label class="check"><input type="checkbox" name="agent_env" value="1" {{ 'checked' if agent_env }}> Claude Code 프로세스에도 OTel 환경변수 주입 (프로젝트 harness 의 <code>telemetry.otel: true</code> 필요)</label>
+    <label class="check"><input type="checkbox" name="agent_headers" value="1" {{ 'checked' if agent_headers }}> 에이전트에 OTLP header(인증 토큰)도 전달 — <strong>에이전트를 실행하는 모든 사용자가 이 값을 읽을 수 있습니다</strong></label>
+    <p class="muted small">{% if otel_available %}opentelemetry 패키지 설치됨.{% else %}<strong>opentelemetry 미설치</strong> — <code>pip install "sagent[otel]"</code> 후 Run/Loop span 이 전송됩니다.{% endif %}
+      아래 옵션을 켜면 프로젝트 <code>harness.yaml</code> 의 <code>telemetry.otel: true</code> 인 Run 의 Claude Code 에 OTel 환경변수가 주입됩니다.</p>
+    <div><button type="submit" class="primary">저장</button></div>
+  </form>
+</section>
+<section class="card">
+  <h2>모델 가격 (USD / 1M tokens)</h2>
+  <p class="muted small">에이전트가 비용을 보고하지 않는 경우(대화형 세션, Codex 등)의 <strong>추정치</strong> 계산에만 쓰입니다. 모델 ID 의 가장 긴 접두어가 일치하는 행을 사용합니다.</p>
+  <table class="table small">
+    <thead><tr><th>모델 접두어</th><th>에이전트</th><th>입력</th><th>출력</th><th>캐시 읽기</th><th>캐시 쓰기</th><th></th></tr></thead>
+    <tbody>
+    {% for p in prices %}
+      <tr>
+        <td class="mono">{{ p.model_prefix }}</td><td>{{ p.provider }}</td><td>{{ p.input_per_mtok }}</td><td>{{ p.output_per_mtok }}</td><td>{{ p.cache_read_per_mtok }}</td><td>{{ p.cache_write_per_mtok }}</td>
+        <td><form method="post" data-confirm="{{ p.model_prefix }} 가격을 지울까요?">{% include "_csrf.html" %}<input type="hidden" name="action" value="delete"><input type="hidden" name="model_prefix" value="{{ p.model_prefix }}"><button type="submit" class="small">삭제</button></form></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <form method="post" class="row gap wrap">
+    {% include "_csrf.html" %}
+    <input name="model_prefix" placeholder="모델 접두어 (예: gpt-5)" required class="mono">
+    <select name="provider"><option>claude</option><option>codex</option></select>
+    <input name="input" placeholder="입력" size="6" inputmode="decimal">
+    <input name="output" placeholder="출력" size="6" inputmode="decimal">
+    <input name="cache_read" placeholder="캐시 읽기" size="8" inputmode="decimal">
+    <input name="cache_write" placeholder="캐시 쓰기" size="8" inputmode="decimal">
+    <button type="submit" class="primary">추가/수정</button>
+  </form>
+</section>
+{% endblock %}

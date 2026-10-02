@@ -1,0 +1,5 @@
+<nav class="tabs range-tabs" aria-label="기간">
+  {% for d, label in [('1', '오늘'), ('7', '7일'), ('30', '30일'), ('90', '90일')] %}
+  <a href="?days={{ d }}" class="{{ 'active' if days|string == d }}">{{ label }}</a>
+  {% endfor %}
+</nav>

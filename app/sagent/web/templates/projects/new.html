@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}새 프로젝트{% endblock %}
+{% block content %}
+<section class="card narrow wide">
+  <h1>새 프로젝트 등록</h1>
+  <form method="post" class="stack">
+    {% include "_csrf.html" %}
+    <label>이름 <input name="name" value="{{ form.get('name', '') }}" required maxlength="80"></label>
+    <label>프로젝트 경로 (서버의 절대 경로)
+      <input name="path" value="{{ form.get('path', '') }}" required placeholder="/path/to/project">
+    </label>
+    <label class="check"><input type="checkbox" name="create_dir" value="1" {{ 'checked' if form.get('create_dir') }}> 디렉터리가 없으면 새로 만들기 (신규 프로젝트)</label>
+    {% if not current_user.is_admin %}
+    <div class="muted small">허용 경로:
+      {% for r in allowed_roots %}<code>{{ r }}</code>{% if not loop.last %}, {% endif %}{% endfor %}
+    </div>
+    {% endif %}
+    <label>slug (비우면 이름에서 생성) <input name="slug" value="{{ form.get('slug', '') }}" pattern="[a-z0-9][a-z0-9\-]{0,39}" maxlength="40"></label>
+    <label>설명 <textarea name="description" rows="2" maxlength="500">{{ form.get('description', '') }}</textarea></label>
+    <label>기본 코딩 에이전트
+      <select name="primary_agent">
+        {% for a in agents %}<option value="{{ a }}" {{ 'selected' if form.get('primary_agent') == a }}>{{ a }}</option>{% endfor %}
+      </select>
+    </label>
+    <button type="submit" class="primary">등록</button>
+  </form>
+</section>
+{% endblock %}

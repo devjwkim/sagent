@@ -1,0 +1,77 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+{% set s = summary %}
+<div class="tiles">
+  <a class="tile" href="{{ url_for('loops.loop_list', slug=g.project.slug) }}"><div class="tile-label">현재 Loop</div><div class="tile-value small-value">{% if s.loop %}{{ s.loop.loop_name }}{% else %}-{% endif %}</div><div class="tile-sub">{% if s.loop %}{{ s.loop.status }} · {{ s.loop.current_node }} · 반복 {{ s.loop.iteration }}{% else %}실행 기록 없음{% endif %}</div></a>
+  <a class="tile" href="{{ url_for('runs.run_list', slug=g.project.slug) }}"><div class="tile-label">Run</div><div class="tile-value small-value">{{ s.active_runs }} 실행 중</div><div class="tile-sub">{% if s.run %}마지막 #{{ s.run.id }} {{ s.run.provider }} · {{ s.run.status }}{% else %}-{% endif %}</div></a>
+  <a class="tile" href="{{ url_for('tests.test_list', slug=g.project.slug) }}"><div class="tile-label">테스트</div><div class="tile-value small-value">{% if s.test %}{{ s.test.status }}{% else %}-{% endif %}</div><div class="tile-sub">{% if s.test %}{{ s.test.suite }} · 통과 {{ s.test.passed }} · 실패 {{ s.test.failed }}{% else %}실행 기록 없음{% endif %}</div></a>
+  <a class="tile" href="{{ url_for('reviews.review_list', slug=g.project.slug) }}"><div class="tile-label">리뷰</div><div class="tile-value small-value">{% if s.review %}{{ (s.review.verdict or s.review.status)|upper }}{% else %}-{% endif %}</div><div class="tile-sub">{% if s.review %}critical {{ s.review.critical }} · high {{ s.review.high }}{% else %}리뷰 기록 없음{% endif %}</div></a>
+  <a class="tile" href="{{ url_for('usage.project_usage', slug=g.project.slug) }}"><div class="tile-label">7일 사용량</div><div class="tile-value small-value">{{ s.tokens_7d|tokens }}</div><div class="tile-sub">{{ s.cost_7d|usd }}</div></a>
+</div>
+<div class="grid two">
+  <section class="card">
+    <h2>정보</h2>
+    <dl class="kv">
+      <dt>경로</dt><dd>{% if 'terminal.view' in perms %}<code>{{ g.project.path }}</code>{% else %}<span class="muted">(developer 이상만 표시)</span>{% endif %}</dd>
+      <dt>Lifecycle</dt><dd><span class="pill">{{ g.project.lifecycle }}</span></dd>
+      <dt>기본 에이전트</dt><dd>{{ g.project.primary_agent }}</dd>
+      <dt>등록</dt><dd>{{ g.project.created_at }}</dd>
+    </dl>
+    {% if g.project.description %}<p>{{ g.project.description }}</p>{% endif %}
+  </section>
+  <section class="card">
+    <h2>내 권한</h2>
+    <ul class="perm-list">
+      {% for p in perms|sort %}<li><code>{{ p }}</code></li>{% endfor %}
+    </ul>
+  </section>
+</div>
+<section class="card">
+  <h2>최근 활동</h2>
+  <ol class="events">
+    {% for e in activity %}
+    <li><span class="muted small nowrap">{{ e.ts|ts }}</span> <code>{{ e.type }}</code>
+      {% if e.run_id %}<a class="small" href="{{ url_for('runs.run_detail', slug=g.project.slug, run_id=e.run_id) }}">Run #{{ e.run_id }}</a>{% endif %}
+      {% if e.data.loop_run_id %}<a class="small" href="{{ url_for('loops.loop_run', slug=g.project.slug, loop_run_id=e.data.loop_run_id) }}">Loop #{{ e.data.loop_run_id }}</a>{% endif %}
+      {% if e.data.node %}<span class="pill">{{ e.data.node }}</span>{% endif %}
+      {% if e.username %}<span class="muted small">{{ e.username }}</span>{% endif %}</li>
+    {% else %}<li class="muted">아직 활동이 없습니다.</li>{% endfor %}
+  </ol>
+</section>
+<section class="card">
+  <div class="row-between"><h2>프로젝트 분석</h2>
+    {% if 'harness.edit' in perms %}<a class="button" href="{{ url_for('harness.bootstrap_form', slug=g.project.slug) }}">Bootstrap</a>{% endif %}
+  </div>
+  {% if scan %}{% include "projects/_scan_summary.html" %}
+  {% else %}<p class="muted">아직 분석하지 않았습니다.{% if 'harness.edit' in perms %} Bootstrap 을 실행하세요.{% endif %}</p>{% endif %}
+</section>
+{% if 'project.settings' in perms %}
+<section class="card">
+  <h2>설정</h2>
+  <form method="post" action="{{ url_for('home.project_settings', slug=g.project.slug) }}" class="stack">
+    {% include "_csrf.html" %}
+    <label>이름 <input name="name" value="{{ g.project.name }}" required maxlength="80"></label>
+    <label>설명 <textarea name="description" rows="2" maxlength="500">{{ g.project.description }}</textarea></label>
+    <div class="row gap">
+      <label>Lifecycle
+        <select name="lifecycle">{% for l in lifecycles %}<option {{ 'selected' if l == g.project.lifecycle }}>{{ l }}</option>{% endfor %}</select>
+      </label>
+      <label>기본 에이전트
+        <select name="primary_agent">{% for a in agents %}<option {{ 'selected' if a == g.project.primary_agent }}>{{ a }}</option>{% endfor %}</select>
+      </label>
+    </div>
+    <button type="submit" class="primary">저장</button>
+  </form>
+</section>
+{% endif %}
+{% if 'project.archive' in perms %}
+<section class="card danger-zone">
+  <h2>보관</h2>
+  <form method="post" action="{{ url_for('home.project_archive', slug=g.project.slug) }}" data-confirm="프로젝트 보관 상태를 바꿀까요?">
+    {% include "_csrf.html" %}
+    <input type="hidden" name="archived" value="{{ '0' if g.project.is_archived else '1' }}">
+    <button type="submit">{{ '보관 해제' if g.project.is_archived else '보관하기' }}</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}
