@@ -216,3 +216,31 @@ button.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 5
 pre.wrap-pre { white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow: auto; }
 /* runtime/definition graphs shrink to the card instead of scrolling sideways */
 .graph-wrap svg.loop-graph:not(.editor-canvas) { max-width: 100%; height: auto; }
+
+/* --- phone width: the page itself never scrolls sideways --- */
+svg.chart { max-width: 100%; height: auto; }
+@media (max-width: 760px) {
+  table.table { display: block; overflow-x: auto; white-space: nowrap; }
+  table.table td.wrap-any, table.table td.pre-wrap { white-space: normal; min-width: 14rem; }
+  .row { flex-wrap: wrap; }
+  .row-between { flex-wrap: wrap; }
+  .page-head { align-items: flex-start; }
+  .tabs { overflow-x: auto; flex-wrap: nowrap; max-width: 100%; }
+  .kv { grid-template-columns: 1fr; gap: 0 .5rem; }
+  .kv dt { margin-top: .4rem; }
+  .card { padding: .8rem .9rem; }
+  input, select, textarea { max-width: 100%; }
+  .loop-def .row-between > .row { width: 100%; }
+}
+@media (max-width: 760px) {
+  .sidebar { padding: .6rem .75rem; gap: .4rem; }
+  .sidebar nav { flex-direction: row; flex-wrap: nowrap; overflow-x: auto; gap: .25rem; padding-bottom: .2rem; }
+  .sidebar nav a { white-space: nowrap; padding: .3rem .55rem; }
+  .sidebar .nav-group { margin: 0 .2rem; align-self: center; white-space: nowrap; }
+  .me { flex-direction: row; flex-wrap: wrap; align-items: center; gap: .3rem .8rem; padding-top: .4rem; }
+  .graph-wrap svg.loop-graph:not(.editor-canvas) { max-width: none; }
+}
+@media (max-width: 760px) {
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  .sidebar, .sidebar nav, .content { min-width: 0; }
+}
