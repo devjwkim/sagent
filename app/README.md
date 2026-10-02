@@ -53,6 +53,25 @@ sagent usage [--project SLUG] [--days 7]
 
 The CLI uses the same core as the web UI. It runs on the server with direct database access, so it acts as the local operator unless `--as USER` is given.
 
+## JSON API
+
+Create a personal token under **API 토큰** (account menu). A token is shown once and acts with your project permissions. `read` tokens can only call GET endpoints.
+
+```bash
+curl -H "Authorization: Bearer $SAGENT_TOKEN" http://127.0.0.1:7832/api/v1/projects
+curl -X POST -H "Authorization: Bearer $SAGENT_TOKEN" -H "Content-Type: application/json" \
+     -d '{"loop": "standard", "task": "Add rate limiting to /login"}' \
+     http://127.0.0.1:7832/api/v1/projects/my-app/loops
+```
+
+| Method | Path |
+|--------|------|
+| GET | `/api/v1/me`, `/api/v1/projects`, `/api/v1/usage?project=&days=` |
+| GET / POST | `/api/v1/projects/<slug>/runs` (POST: `{prompt, provider?}`) |
+| GET | `/api/v1/runs/<id>`, `/api/v1/loops/<id>`, `/api/v1/reviews/by-run/<run_id>` |
+| POST | `/api/v1/projects/<slug>/loops` `{loop, task}`, `/tests` `{suite}`, `/reviews` `{base_ref}` |
+| POST | `/api/v1/runs/<id>/stop`, `/api/v1/loops/<id>/stop` |
+
 ## Project files
 
 ```text

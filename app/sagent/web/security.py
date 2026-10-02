@@ -65,8 +65,37 @@ def logout_user() -> None:
     session.clear()
 
 
+def is_api_request() -> bool:
+    return request.path.startswith("/api/")
+
+
+def _load_api_user() -> None:
+    """The JSON API authenticates only with bearer tokens, never the session
+    cookie — so it needs no CSRF token and cannot be driven cross-site."""
+    from sagent.core import tokens, users as users_mod
+
+    g.api_scope = None
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return
+    ip = client_ip()
+    if users_mod.is_locked("", ip):
+        return
+    res = tokens.authenticate(auth[7:].strip())
+    if res is None:
+        from sagent import db
+
+        db.execute("INSERT INTO login_attempts (username, ip, success, created_at) VALUES ('', ?, 0, ?)",
+                   (ip, db.utcnow()))
+        return
+    g.user, g.api_scope = res
+
+
 def _load_user() -> None:
     g.user = None
+    if is_api_request():
+        _load_api_user()
+        return
     uid = session.get("uid")
     if uid is None:
         return
@@ -82,7 +111,7 @@ def _load_user() -> None:
 
 
 def _check_csrf() -> None:
-    if request.method in SAFE_METHODS:
+    if request.method in SAFE_METHODS or is_api_request():
         return
     sent = request.headers.get("X-CSRF-Token") or request.form.get("csrf_token", "")
     expected = session.get(CSRF_SESSION_KEY, "")
@@ -104,6 +133,8 @@ def init_app(app: Flask) -> None:
             and user.must_change_password
             and request.endpoint not in _PASSWORD_EXEMPT
         ):
+            if is_api_request():
+                return jsonify(error="password change required before using the API"), 403
             return redirect(url_for("auth.change_password"))
         return None
 

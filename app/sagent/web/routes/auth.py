@@ -30,6 +30,26 @@ def logout():
     return redirect(url_for("auth.login"))
 
 
+@bp.route("/account/tokens", methods=["GET", "POST"])
+@login_required
+def api_tokens():
+    from sagent.core import tokens
+
+    new_token = None
+    if request.method == "POST":
+        try:
+            if request.form.get("action") == "revoke":
+                tokens.revoke(g.user, int(request.form.get("token_id", "0")))
+                flash("토큰을 폐기했습니다.", "ok")
+            else:
+                days = request.form.get("days", "90")
+                new_token, _ = tokens.create(g.user, request.form.get("name", ""), request.form.get("scope", "read"),
+                                             int(days) if days.isdigit() and days != "0" else None)
+        except (ValidationError, ValueError) as exc:
+            flash(str(exc) or "잘못된 요청입니다.", "error")
+    return render_template("account/tokens.html", items=tokens.list_for(g.user), new_token=new_token)
+
+
 @bp.route("/account/password", methods=["GET", "POST"])
 @login_required
 def change_password():

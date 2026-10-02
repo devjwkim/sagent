@@ -78,6 +78,9 @@ def create_app(config: Config | None = None, *, testing: bool = False) -> Flask:
     app.register_blueprint(tests_routes.bp)
     app.register_blueprint(reviews_routes.bp)
     app.register_blueprint(usage_routes.bp)
+    from sagent.web.routes import api as api_routes
+
+    app.register_blueprint(api_routes.bp)
 
     @app.context_processor
     def _ctx():

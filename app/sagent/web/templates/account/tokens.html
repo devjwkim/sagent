@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}API 토큰{% endblock %}
+{% block content %}
+<header class="page-head"><h1>API 토큰</h1></header>
+{% if new_token %}
+<section class="card flash flash-ok">
+  <h2>새 토큰 — 지금 한 번만 표시됩니다</h2>
+  <pre class="code">{{ new_token }}</pre>
+  <p class="small muted">요청 헤더에 <code>Authorization: Bearer &lt;token&gt;</code> 으로 사용합니다. 토큰은 내 계정과 같은 프로젝트 권한을 가집니다.</p>
+</section>
+{% endif %}
+<section class="card">
+  <h2>새 토큰</h2>
+  <form method="post" class="row gap wrap">
+    {% include "_csrf.html" %}
+    <input name="name" placeholder="이름 (예: CI)" required maxlength="60">
+    <select name="scope"><option value="read">read (조회만)</option><option value="write">write (실행 포함)</option></select>
+    <select name="days"><option value="30">30일</option><option value="90" selected>90일</option><option value="365">1년</option><option value="0">만료 없음</option></select>
+    <button type="submit" class="primary">발급</button>
+  </form>
+</section>
+<section class="card">
+  <h2>내 토큰</h2>
+  <table class="table small">
+    <thead><tr><th>이름</th><th>토큰</th><th>scope</th><th>만료</th><th>마지막 사용</th><th>상태</th><th></th></tr></thead>
+    <tbody>
+    {% for t in items %}
+      <tr><td>{{ t.name }}</td><td class="mono">{{ t.prefix }}…</td><td>{{ t.scope }}</td><td>{{ t.expires_at|ts if t.expires_at else '없음' }}</td><td>{{ t.last_used_at|ts if t.last_used_at else '-' }}</td>
+        <td>{% if t.revoked_at %}<span class="pill warn">폐기됨</span>{% else %}<span class="pill ok">활성</span>{% endif %}</td>
+        <td>{% if not t.revoked_at %}<form method="post" data-confirm="토큰 {{ t.name }} 을(를) 폐기할까요?">{% include "_csrf.html" %}<input type="hidden" name="action" value="revoke"><input type="hidden" name="token_id" value="{{ t.id }}"><button type="submit" class="small">폐기</button></form>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7" class="muted">토큰이 없습니다.</td></tr>{% endfor %}
+    </tbody>
+  </table>
+  <p class="small muted">API: <code>/api/v1/me</code>, <code>/api/v1/projects</code>, <code>/api/v1/projects/&lt;slug&gt;/runs|loops|tests|reviews</code>, <code>/api/v1/runs/&lt;id&gt;</code>, <code>/api/v1/loops/&lt;id&gt;</code>, <code>/api/v1/usage</code></p>
+</section>
+{% endblock %}

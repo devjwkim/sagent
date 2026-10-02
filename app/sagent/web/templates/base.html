@@ -32,6 +32,7 @@
     <div class="me">
       <div class="me-name">{{ current_user.label }} <span class="badge">{{ current_user.role }}</span></div>
       <a href="{{ url_for('auth.change_password') }}">비밀번호 변경</a>
+      <a href="{{ url_for('auth.api_tokens') }}">API 토큰</a>
       <form method="post" action="{{ url_for('auth.logout') }}">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <button class="linklike" type="submit">로그아웃</button>

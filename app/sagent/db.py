@@ -108,7 +108,7 @@ _extra_schemas: list[str] = []
 
 # Feature modules that call register_schema() at import time.
 SCHEMA_MODULES = ("sagent.core.runs", "sagent.core.loops", "sagent.core.tests", "sagent.core.reviews", "sagent.core.usage", "sagent.core.prompts",
-                  "sagent.core.telemetry", "sagent.core.loop_library")
+                  "sagent.core.telemetry", "sagent.core.loop_library", "sagent.core.tokens")
 
 
 def utcnow() -> str:
