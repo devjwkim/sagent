@@ -1,0 +1,83 @@
+{% extends "projects/_layout.html" %}
+{% block scripts %}
+{% if can_view_terminal and run.is_active %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/xterm.css') }}">
+<script src="{{ url_for('static', filename='vendor/xterm.js') }}" defer></script>
+<script src="{{ url_for('static', filename='vendor/xterm-addon-fit.js') }}" defer></script>
+<script src="{{ url_for('static', filename='js/terminal.js') }}?v={{ app_version }}" defer></script>
+{% endif %}
+{% endblock %}
+{% block project_content %}
+<section class="card">
+  <div class="row-between">
+    <h2>Run #{{ run.id }} · {{ run.title|truncate(90) }}</h2>
+    <div class="row gap">
+      {% if run.is_active and can_control %}
+      <form method="post" action="{{ url_for('runs.run_stop', slug=g.project.slug, run_id=run.id) }}" data-confirm="Run 을 중지할까요?">
+        {% include "_csrf.html" %}<button type="submit">중지</button>
+      </form>
+      {% endif %}
+      <a class="button" href="{{ url_for('runs.run_list', slug=g.project.slug) }}">목록</a>
+    </div>
+  </div>
+  <div id="run-summary" {% if run.is_active %}hx-get="{{ url_for('runs.run_summary', slug=g.project.slug, run_id=run.id) }}" hx-trigger="every 3s" hx-swap="innerHTML"{% endif %}>
+    {% include "runs/_summary.html" %}
+  </div>
+  {% if attach and can_view_terminal %}<p class="muted small">서버에서 직접 붙기: <code>{{ attach }}</code></p>{% endif %}
+</section>
+
+{% if can_view_terminal and run.is_active %}
+<section class="card">
+  <div class="row-between">
+    <h2>실시간 터미널</h2>
+    <div class="row gap">
+      <span id="xterm-status" class="muted small"></span>
+      <button type="button" id="xterm-open" class="primary">{{ '직접 조작 (Take Control)' if can_input else '실시간 보기' }}</button>
+      <button type="button" id="xterm-close" hidden>닫기</button>
+    </div>
+  </div>
+  <div id="xterm" class="xterm-box" hidden data-ws="{{ url_for('run_ws', slug=g.project.slug, run_id=run.id) }}"
+       data-readonly="{{ '0' if can_input else '1' }}" data-autostart="{{ '1' if request.args.get('take') and can_input else '0' }}"></div>
+  {% if can_input %}<p class="muted small">브라우저에서 tmux 세션에 직접 붙습니다. 창을 닫아도 에이전트는 계속 실행됩니다. 입력은 감사 로그에 기록됩니다.</p>{% endif %}
+</section>
+{% endif %}
+{% if can_view_terminal %}
+<section class="card">
+  <div class="row-between"><h2>터미널 스냅샷</h2><a class="small" href="{{ url_for('runs.run_terminal_log', slug=g.project.slug, run_id=run.id) }}">원본 terminal.log 받기</a></div>
+  <div id="terminal" class="terminal" data-autoscroll
+       hx-get="{{ url_for('runs.run_terminal', slug=g.project.slug, run_id=run.id) }}"
+       hx-trigger="load{% if run.is_active %}, every 2s{% endif %}" hx-swap="innerHTML"></div>
+  {% if run.is_active and can_input %}
+  <form class="term-input" hx-post="{{ url_for('runs.run_input', slug=g.project.slug, run_id=run.id) }}" hx-target="#input-result" hx-swap="innerHTML" data-reset-on-send>
+    <textarea name="text" rows="2" placeholder="터미널에 입력 (Enter 전송: Ctrl+Enter)"></textarea>
+    <div class="row gap wrap">
+      <button type="submit" class="primary">보내기</button>
+      {% for k in keys %}
+      <button type="button" class="small" hx-post="{{ url_for('runs.run_input', slug=g.project.slug, run_id=run.id) }}" hx-vals='{"key": "{{ k }}"}' hx-target="#input-result">{{ k }}</button>
+      {% endfor %}
+      <span id="input-result"></span>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="card">
+  <h2>이벤트</h2>
+  <div id="events" hx-get="{{ url_for('runs.run_events', slug=g.project.slug, run_id=run.id) }}"
+       hx-trigger="load{% if run.is_active %}, every 3s{% endif %}" hx-swap="innerHTML"></div>
+</section>
+
+{% if can_view_terminal and response %}
+<section class="card">
+  <h2>에이전트 최종 응답</h2>
+  <pre class="code wrap-pre">{{ response }}</pre>
+</section>
+{% endif %}
+{% if can_view_terminal and (prompt or run.command) %}
+<section class="card">
+  <h2>{{ '명령' if run.command else '프롬프트' }}</h2>
+  <pre class="code wrap-pre">{{ run.command or prompt }}</pre>
+</section>
+{% endif %}
+{% endblock %}

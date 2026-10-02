@@ -1,0 +1,10 @@
+<dl class="kv">
+  <dt>상태</dt><dd><span class="status s-{{ run.status|lower }}">{{ run.status }}</span>{% if run.error %} <span class="small muted">{{ run.error }}</span>{% endif %}</dd>
+  <dt>에이전트</dt><dd>{{ run.provider }}{% if run.kind == 'agent' %} · {{ run.mode }}{% endif %}{% if run.model %} · <code>{{ run.model }}</code>{% endif %}</dd>
+  {% if run.agent_session_id %}<dt>세션</dt><dd><code>{{ run.agent_session_id }}</code></dd>{% endif %}
+  <dt>실행자</dt><dd>{{ (names.get(run.created_by) or ('삭제된 사용자' if run.created_by else 'system')) }}</dd>
+  <dt>토큰</dt><dd>입력 {{ run.input_tokens|tokens }} · 출력 {{ run.output_tokens|tokens }} · 캐시 {{ (run.cache_read_tokens + run.cache_write_tokens)|tokens }}</dd>
+  <dt>비용</dt><dd>{{ run.cost_usd|usd }}</dd>
+  <dt>시간</dt><dd>{{ run.started_at|ts }}{% if run.finished_at %} → {{ run.finished_at|ts }}{% endif %}{% if run.duration_ms %} ({{ run.duration_ms|duration }}){% endif %}</dd>
+  {% if run.summary %}<dt>결과</dt><dd class="small">{{ run.summary }}</dd>{% endif %}
+</dl>

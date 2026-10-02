@@ -15,6 +15,6 @@ venv/
 *.key
 secret_key
 .env
-runs/
-test-results/
-playwright-report/
+/runs/
+/test-results/
+/playwright-report/

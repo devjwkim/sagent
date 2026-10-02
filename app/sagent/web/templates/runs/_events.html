@@ -1,0 +1,20 @@
+<ol class="events">
+{% for e in events %}
+  <li class="ev ev-{{ e.type.split('.')[0] }}">
+    <span class="muted small nowrap">{{ e.ts|ts }}</span>
+    <code>{{ e.type }}</code>
+    {% set d = e.data %}
+    {% if d.text %}<div class="ev-text">{{ d.text|truncate(1200) }}</div>
+    {% elif d.command %}<code class="small">{{ d.command }}</code>{% if d.exit_code is not none and d.exit_code is defined %} → {{ d.exit_code }}{% endif %}
+    {% elif d.tool %}<span class="small">{{ d.tool }} {{ d.input or '' }}</span>
+    {% elif d.files %}<span class="small">{{ d.files|join(', ') }}</span>
+    {% elif d.result %}<span class="small">{{ d.result|truncate(300) }}</span>
+    {% elif d.input_tokens is defined %}<span class="small">in {{ d.input_tokens|tokens }} / out {{ d.output_tokens|tokens }}{% if d.cost_usd %} · {{ d.cost_usd|usd }}{% endif %}</span>
+    {% elif d.error %}<span class="small">{{ d.error }}</span>
+    {% elif d.by %}<span class="small">by {{ d.by }}{% if d.key %} · {{ d.key }}{% endif %}{% if d.length %} · {{ d.length }} chars{% endif %}</span>
+    {% endif %}
+  </li>
+{% else %}
+  <li class="muted">이벤트가 없습니다.</li>
+{% endfor %}
+</ol>

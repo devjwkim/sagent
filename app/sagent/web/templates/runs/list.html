@@ -1,0 +1,31 @@
+{% extends "projects/_layout.html" %}
+{% block project_content %}
+{% if can_start %}
+<section class="card">
+  <h2>새 에이전트 Run</h2>
+  <form method="post" action="{{ url_for('runs.run_start', slug=g.project.slug) }}" class="stack">
+    {% include "_csrf.html" %}
+    <textarea name="prompt" rows="5" placeholder="에이전트에게 맡길 작업 (interactive 모드에서는 첫 메시지, 생략 가능)"></textarea>
+    <div class="row gap wrap">
+      <label>에이전트
+        <select name="provider">
+          {% for name, a in providers %}<option value="{{ name }}" {{ 'selected' if name == default_provider }} {{ '' if a.check_installed() else 'disabled' }}>{{ a.label }}{{ '' if a.check_installed() else ' (미설치)' }}</option>{% endfor %}
+        </select>
+      </label>
+      <label>모드
+        <select name="mode">
+          <option value="auto">자동 (headless JSON)</option>
+          <option value="interactive">대화형 (터미널)</option>
+        </select>
+      </label>
+      <label>이어갈 세션 ID (선택) <input name="resume_session" maxlength="128" class="mono" size="38"></label>
+    </div>
+    <div><button type="submit" class="primary">실행</button></div>
+  </form>
+</section>
+{% endif %}
+<section class="card">
+  <h2>Runs</h2>
+  {% include "runs/_table.html" %}
+</section>
+{% endblock %}
