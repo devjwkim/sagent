@@ -66,7 +66,11 @@ CREATE INDEX IF NOT EXISTS idx_lrn_loop ON loop_run_nodes(loop_run_id, id);
 LOOP_ACTIVE = ("RUNNING", "PAUSED", "WAITING_USER")
 NODE_STATES = ("WAITING", "RUNNING", "SUCCESS", "FAILED", "SKIPPED", "PAUSED", "CANCELLED")
 LEASE_SECONDS = 30
-_OWNER = f"{socket.gethostname()}:{os.getpid()}"
+def _owner() -> str:
+    # per thread: the web worker and request threads must not share a lease
+    import threading
+
+    return f"{socket.gethostname()}:{os.getpid()}:{threading.get_ident()}"
 
 # review node implementation is injected by sagent.core.reviews
 _review_starter = None
@@ -422,14 +426,14 @@ def _acquire(loop_run_id: int) -> bool:
         cur = conn.execute(
             "UPDATE loop_runs SET lease_owner = ?, lease_until = ? WHERE id = ? AND"
             " (lease_until IS NULL OR lease_until < ? OR lease_owner = ?)",
-            (_OWNER, until, loop_run_id, now.replace(microsecond=0).isoformat(), _OWNER),
+            (_owner(), until, loop_run_id, now.replace(microsecond=0).isoformat(), _owner()),
         )
         return cur.rowcount == 1
 
 
 def _release(loop_run_id: int) -> None:
     db.execute("UPDATE loop_runs SET lease_until = NULL WHERE id = ? AND lease_owner = ?",
-               (loop_run_id, _OWNER))
+               (loop_run_id, _owner()))
 
 
 def step(loop_run_id: int) -> None:

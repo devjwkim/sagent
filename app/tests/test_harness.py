@@ -190,3 +190,22 @@ def test_cli_import(app, node_project, capsys):
     assert "ready" in out
     p = projects.find_by_path(str(node_project))
     assert p.primary_agent == "codex"
+
+
+def test_yaml_aliases_rejected(owner_project, node_project):
+    """Billion-laughs: aliases nested inside an otherwise valid loop must not
+    survive to the definition snapshot (json.dumps would expand them)."""
+    owner, p = owner_project
+    harness.bootstrap(owner, p.slug, scanner.scan(node_project), {})
+    bomb = (
+        "default: quick\nloops:\n  quick:\n    start: implement\n    x0: &a [1,1,1,1,1,1,1,1,1]\n"
+        + "".join(f"    x{i}: &{chr(97 + i)} [*{chr(96 + i)},*{chr(96 + i)},*{chr(96 + i)},*{chr(96 + i)}]\n" for i in range(1, 9))
+        + "    nodes:\n      implement: {type: agent, prompt: '{task}', extra: *h}\n      done: {type: end}\n"
+        "    edges:\n      - {from: implement, to: done}\n"
+    )
+    with pytest.raises(ValidationError, match="aliases"):
+        harness.save_file(owner, p.slug, "loops.yaml", bomb)
+    # the same file committed straight into the repo is ignored (defaults used), not expanded
+    (node_project / ".sagent" / "loops.yaml").write_text(bomb)
+    loops_cfg = harness.load(p)["loops.yaml"]
+    assert "x8" not in loops_cfg["loops"].get("quick", {})

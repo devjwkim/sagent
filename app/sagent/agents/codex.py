@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from sagent.agents.base import AgentAdapter, Event, RunSpec, Usage, short
+from sagent.agents.base import AgentAdapter, Event, RunSpec, Usage, _int, short
 
 SANDBOX_MODES = ("read-only", "workspace-write", "danger-full-access")
 
@@ -95,9 +95,9 @@ class CodexAdapter(AgentAdapter):
             return None
         u = obj.get("usage") or {}
         return Usage(
-            input_tokens=int(u.get("input_tokens") or 0),
-            output_tokens=int(u.get("output_tokens") or 0),
-            cache_read_tokens=int(u.get("cached_input_tokens") or 0),
+            input_tokens=_int(u.get("input_tokens")),
+            output_tokens=_int(u.get("output_tokens")),
+            cache_read_tokens=_int(u.get("cached_input_tokens")),
         )
 
     def outcome(self, obj: dict) -> tuple[bool, str] | None:

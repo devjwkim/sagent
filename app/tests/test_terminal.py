@@ -115,3 +115,20 @@ def test_loop_take_control_and_return(team_project):
     implement_runs = [r for r in loops.node_rows(lr.id) if r["node_key"] == "implement"]
     prompt = (runs.run_dir(implement_runs[-1]["run_id"]) / "prompt.md").read_text()
     assert "I fixed the config by hand" in prompt
+
+
+def test_ws_outsider_gets_clean_policy_close(team_project, live_server, browser_page, make_user):
+    import simple_websocket
+
+    t = team_project
+    make_user("eve")
+    run = runs.start_agent(t["dev"], t["project"].slug, "", mode="interactive")
+    page = browser_page
+    _login(page, live_server, "eve")
+    cookie = "; ".join(f"{c['name']}={c['value']}" for c in page.context.cookies())
+    url = live_server.replace("http://", "ws://") + f"/p/{t['project'].slug}/runs/{run.id}/ws"
+    with pytest.raises(simple_websocket.ConnectionClosed) as exc:
+        ws = simple_websocket.Client.connect(url, headers={"Cookie": cookie, "Origin": "http://127.0.0.1"})
+        ws.receive(timeout=3)
+    assert exc.value.reason == 1008
+    runs.stop(t["dev"], run.id)

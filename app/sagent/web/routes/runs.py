@@ -3,7 +3,7 @@ import json
 from flask import Blueprint, abort, flash, g, redirect, render_template, request, url_for
 
 from sagent import agents
-from sagent.core import harness, rbac, runs, users
+from sagent.core import harness, projects, rbac, runs, users
 from sagent.core.errors import SagentError
 from sagent.runtime import tmux
 from sagent.web.security import project_perm
@@ -177,14 +177,26 @@ def _origin_ok() -> bool:
 
 def register_ws(sock) -> None:
     @sock.route("/p/<slug>/runs/<int:run_id>/ws")
-    @project_perm("terminal.view")
     def run_ws(ws, slug, run_id):
+        from werkzeug.exceptions import HTTPException
+
+        from sagent.core.errors import Forbidden, NotFound
         from sagent.runtime import pty_bridge
 
         if not _origin_ok():
             ws.close(reason=1008, message="bad origin")
             return
-        run = _run_in_project(run_id, "terminal.view")
+        # Authorise inside the handler and close cleanly (1008) instead of
+        # letting NotFound/Forbidden escape after the WebSocket handshake.
+        if g.get("user") is None:
+            ws.close(reason=1008, message="login required")
+            return
+        try:
+            g.project, g.project_role = projects.get(g.user, slug, "terminal.view")
+            run = _run_in_project(run_id, "terminal.view")
+        except (NotFound, Forbidden, HTTPException):
+            ws.close(reason=1008, message="not found")
+            return
         if not run.is_active or not run.tmux_session or not tmux.exists(run.tmux_session):
             ws.close(reason=1000, message="run is not active")
             return

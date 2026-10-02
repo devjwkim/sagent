@@ -249,6 +249,8 @@ def _final_text(run) -> str:
     text = ""
     with open(path, "rb") as fh:
         for raw in fh:
+            if len(raw) > runs.MAX_LINE:
+                continue
             try:
                 obj = json.loads(raw)
             except (json.JSONDecodeError, UnicodeDecodeError):

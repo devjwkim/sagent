@@ -26,6 +26,20 @@ prompt = sys.stdin.read()
 sid = args[args.index("--session-id") + 1] if "--session-id" in args else (
     args[args.index("--resume") + 1] if "--resume" in args else "sess-1")
 out({"type": "system", "subtype": "init", "session_id": sid, "model": "claude-test"})
+if "HUGELINE" in prompt:  # one 9 MB line without JSON structure, then a normal result
+    sys.stdout.write("x" * (9 * 1024 * 1024) + "\n")
+    sys.stdout.flush()
+if "BADUTF8" in prompt:
+    sys.stdout.buffer.write(b"\xff\xfe\x00garbage\x80\n[1, 2, 3]\n42\n\"str\"\n")
+    sys.stdout.flush()
+if "BADUSAGE" in prompt:
+    out({"type": "system", "subtype": "init", "session_id": "../../etc/passwd", "model": "<b>m</b>"})
+    out({"type": "result", "subtype": "success", "is_error": False, "result": "ok", "num_turns": "many",
+         "total_cost_usd": "NaN", "usage": {"input_tokens": "lots", "output_tokens": -5,
+                                             "cache_read_input_tokens": 1e300}})
+    sys.exit(0)
+if "HTMLMSG" in prompt:
+    out({"type": "assistant", "message": {"content": [{"type": "text", "text": "<img src=x onerror=alert(1)><script>alert(2)</script>"}]}})
 if "SLEEP" in prompt:
     time.sleep(60)
 if "NAP" in prompt:
@@ -50,6 +64,11 @@ if "You are a strict senior code reviewer" in prompt:
         text = "```json\n" + json.dumps({"verdict": "reject", "summary": f"found a bug (mode={mode})", "issues": [
             {"severity": "high", "file": "bug.txt", "line": 1, "category": "bug",
              "reason": "contains XXBUGXX", "suggested_fix": "remove it", "confidence": 0.9}]}) + "\n```"
+    elif "FLOODREVIEW" in prompt:
+        issue = {"severity": "<script>", "file": "<img src=x onerror=alert(1)>", "line": "NaN",
+                 "reason": "R" * 1000, "suggested_fix": None, "confidence": "high"}
+        big = dict(issue, reason="R" * 100000)
+        text = json.dumps({"verdict": "approve", "summary": "<b>x</b>" * 3000, "issues": [big] + [issue] * 5000})
     elif "MEDIUMISSUE" in prompt:
         text = json.dumps({"verdict": "approve", "summary": "minor", "issues": [
             {"severity": "medium", "file": "a.py", "line": "7", "reason": "naming", "confidence": 3}]})

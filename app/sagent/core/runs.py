@@ -75,6 +75,7 @@ CREATE INDEX IF NOT EXISTS idx_events_run ON events(run_id, id);
 ACTIVE = ("QUEUED", "RUNNING", "WAITING_USER", "PAUSED")
 FINAL = ("SUCCESS", "FAILED", "CANCELLED")
 MAX_PROMPT = 200_000
+MAX_LINE = 8 * 1024 * 1024  # larger agent output lines are skipped
 
 _runs_root: Path | None = None
 _listeners: list = []  # callables(event_dict) — e.g. OTel exporter
@@ -455,41 +456,52 @@ def _ingest(run: Run) -> None:
         return
     with open(path, "rb") as fh:
         fh.seek(run.events_offset)
-        chunk = fh.read(min(size - run.events_offset, 8 * 1024 * 1024))
+        chunk = fh.read(min(size - run.events_offset, MAX_LINE))
     end = chunk.rfind(b"\n")
+    skipped = 0
     if end < 0:
-        return
-    chunk = chunk[: end + 1]
-    new_offset = run.events_offset + len(chunk)
+        if len(chunk) < MAX_LINE:
+            return  # partial line: wait for the rest
+        # A single line larger than MAX_LINE: skip it (up to its newline) so
+        # ingestion never wedges on hostile or broken output.
+        with open(path, "rb") as fh:
+            pos = run.events_offset + len(chunk)
+            fh.seek(pos)
+            while True:
+                block = fh.read(1024 * 1024)
+                if not block:
+                    return  # still being written; try again later
+                nl = block.find(b"\n")
+                if nl >= 0:
+                    skipped = pos + nl + 1 - run.events_offset
+                    break
+                pos += len(block)
+        chunk = b""
+    else:
+        chunk = chunk[: end + 1]
+    new_offset = run.events_offset + skipped + len(chunk)
     adapter = agents.get(run.provider)
     pending: list[tuple[str, dict]] = []
     updates: dict = {}
     usage_add = [0, 0, 0, 0]
-    cost = None
+    cost_box: list = [None]
+    if skipped:
+        pending.append(("agent.warning", {"text": f"skipped an oversized output line ({skipped} bytes)"}))
     for raw in chunk.splitlines():
+        if len(raw) > MAX_LINE:
+            pending.append(("agent.warning", {"text": f"skipped an oversized output line ({len(raw)} bytes)"}))
+            continue
         try:
             obj = json.loads(raw)
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except (json.JSONDecodeError, UnicodeDecodeError, RecursionError):
             continue
         if not isinstance(obj, dict):
             continue
-        sid = adapter.session_id(obj)
-        if sid and _is_safe_id(sid):
-            updates["agent_session_id"] = sid
-        u = adapter.usage(obj)
-        if u:
-            usage_add = [usage_add[0] + u.input_tokens, usage_add[1] + u.output_tokens,
-                         usage_add[2] + u.cache_read_tokens, usage_add[3] + u.cache_write_tokens]
-            if u.cost_usd is not None:
-                cost = (cost or 0) + float(u.cost_usd)
-            if u.model:
-                updates["model"] = u.model
-        out = adapter.outcome(obj)
-        if out:
-            updates["outcome_ok"] = int(out[0])
-            updates["summary"] = out[1][:500]
-        for ev in adapter.parse(obj):
-            pending.append((ev.type, ev.data))
+        try:
+            _ingest_obj(adapter, obj, updates, usage_add, pending, cost_box)
+        except Exception as exc:  # one malformed object must never wedge the run
+            pending.append(("agent.warning", {"text": f"unparseable agent event: {exc.__class__.__name__}"}))
+    cost = cost_box[0]
     now = db.utcnow()
     with db.connect() as conn:
         cur = conn.execute(
@@ -515,6 +527,37 @@ def _ingest(run: Run) -> None:
             conn.execute(f"UPDATE runs SET {cols} WHERE id = ?", (*updates.values(), run.id))
     for type_, data in pending:
         _notify({"run_id": run.id, "project_id": run.project_id, "type": type_, "ts": now, "data": data})
+
+
+def _num(value, lo: float = 0, hi: float = 1e12) -> float:
+    """Sanitise numbers coming from agent output (strings, NaN, inf, negatives)."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+    if v != v or v < lo or v > hi:
+        return 0.0
+    return v
+
+
+def _ingest_obj(adapter, obj: dict, updates: dict, usage_add: list, pending: list, cost_box: list) -> None:
+    sid = adapter.session_id(obj)
+    if isinstance(sid, str) and _is_safe_id(sid):
+        updates["agent_session_id"] = sid
+    u = adapter.usage(obj)
+    if u:
+        for i, v in enumerate((u.input_tokens, u.output_tokens, u.cache_read_tokens, u.cache_write_tokens)):
+            usage_add[i] += int(_num(v, hi=1e10))
+        if u.cost_usd is not None:
+            cost_box[0] = (cost_box[0] or 0) + _num(u.cost_usd, hi=1e6)
+        if isinstance(u.model, str) and re.fullmatch(r"[A-Za-z0-9._:/@\[\]-]{1,100}", u.model):
+            updates["model"] = u.model
+    out = adapter.outcome(obj)
+    if out:
+        updates["outcome_ok"] = int(bool(out[0]))
+        updates["summary"] = str(out[1])[:500]
+    for ev in adapter.parse(obj):
+        pending.append((ev.type, ev.data))
 
 
 def _finalize(run: Run, status: str, *, exit_code: int | None = None, error: str = "",

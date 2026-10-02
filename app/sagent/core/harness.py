@@ -34,6 +34,23 @@ DEFAULT_RULES = [
 ]
 
 
+class _StrictLoader(yaml.SafeLoader):
+    """SafeLoader without anchors/aliases. Aliases let a tiny file expand into
+    an enormous structure (billion laughs) once serialised — e.g. when a loop
+    definition is snapshotted — and .sagent/ files may come from any commit."""
+
+    def compose_node(self, parent, index):
+        if self.check_event(yaml.events.AliasEvent):
+            event = self.peek_event()
+            raise yaml.composer.ComposerError(None, None, "YAML aliases (*name) are not allowed in .sagent files",
+                                              event.start_mark)
+        return super().compose_node(parent, index)
+
+
+def safe_load(text: str):
+    return yaml.load(text, Loader=_StrictLoader)  # noqa: S506 - strict SafeLoader subclass
+
+
 def dump(data: dict) -> str:
     return yaml.safe_dump(data, sort_keys=False, allow_unicode=True, width=100)
 
@@ -164,7 +181,7 @@ def parse(name: str, text: str) -> dict:
     if len(text.encode()) > MAX_FILE:
         raise ValidationError("파일이 너무 큽니다.")
     try:
-        data = yaml.safe_load(text) or {}
+        data = safe_load(text) or {}
     except yaml.YAMLError as exc:
         raise ValidationError(f"YAML 오류: {exc}") from None
     errs = validate(name, data)
@@ -228,7 +245,7 @@ def load(project) -> dict[str, dict]:
         data = None
         if text is not None:
             try:
-                data = yaml.safe_load(text)
+                data = safe_load(text)
             except yaml.YAMLError:
                 data = None
         out[name] = data if isinstance(data, dict) else defaults[name]

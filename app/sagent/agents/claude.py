@@ -9,7 +9,7 @@ import os
 import re
 from pathlib import Path
 
-from sagent.agents.base import AgentAdapter, Event, RunSpec, Usage, short, tool_event_type
+from sagent.agents.base import AgentAdapter, Event, RunSpec, Usage, _int, short, tool_event_type
 
 PERMISSION_MODES = ("acceptEdits", "auto", "bypassPermissions", "manual", "dontAsk", "plan", "default")
 _TOOL_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,40}(\([^()\n]{0,200}\))?$")
@@ -112,10 +112,10 @@ class ClaudeAdapter(AgentAdapter):
         u = obj.get("usage") or {}
         models = list((obj.get("modelUsage") or {}).keys())
         return Usage(
-            input_tokens=int(u.get("input_tokens") or 0),
-            output_tokens=int(u.get("output_tokens") or 0),
-            cache_read_tokens=int(u.get("cache_read_input_tokens") or 0),
-            cache_write_tokens=int(u.get("cache_creation_input_tokens") or 0),
+            input_tokens=_int(u.get("input_tokens")),
+            output_tokens=_int(u.get("output_tokens")),
+            cache_read_tokens=_int(u.get("cache_read_input_tokens")),
+            cache_write_tokens=_int(u.get("cache_creation_input_tokens")),
             cost_usd=obj.get("total_cost_usd"),
             model=models[0] if models else None,
         )

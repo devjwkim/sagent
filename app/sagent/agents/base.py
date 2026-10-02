@@ -93,6 +93,15 @@ class AgentAdapter:
         return None
 
 
+def _int(value: Any) -> int:
+    """Token counts from agent JSON: tolerate strings, floats, NaN, negatives."""
+    try:
+        v = int(float(value))
+    except (TypeError, ValueError, OverflowError):
+        return 0
+    return v if 0 <= v <= 10_000_000_000 else 0
+
+
 def short(value: Any, limit: int = 160) -> str:
     text = value if isinstance(value, str) else str(value)
     text = " ".join(text.split())
