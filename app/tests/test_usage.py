@@ -201,6 +201,8 @@ def test_log_retention(team_project):
     db.execute("UPDATE runs SET finished_at = '2000-01-01T00:00:00+00:00' WHERE id = ?", (run.id,))
     assert runs.purge_old_logs(30) == 1
     assert not d.exists()
+    types = {r["type"] for r in db.query("SELECT type FROM events WHERE run_id = ?", (run.id,))}
+    assert "run.completed" in types and not any(t.startswith("agent.") for t in types)
     assert db.scalar("SELECT COUNT(*) FROM usage_records WHERE run_id = ?", (run.id,)) == 1
 
 

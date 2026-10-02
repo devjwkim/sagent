@@ -608,6 +608,10 @@ def purge_old_logs(days: int | None = None) -> int:
         if d.is_dir():
             shutil.rmtree(d, ignore_errors=True)
             n += 1
+    # detailed agent/terminal events can contain message text; lifecycle events stay
+    db.execute(
+        "DELETE FROM events WHERE (type LIKE 'agent.%' OR type LIKE 'terminal.%') AND run_id IN"
+        " (SELECT id FROM runs WHERE finished_at IS NOT NULL AND finished_at < ?)", (cutoff,))
     for row in db.query("SELECT id FROM test_runs WHERE finished_at IS NOT NULL AND finished_at < ?", (cutoff,)):
         d = root() / f"test-{int(row['id'])}"
         if d.is_dir():

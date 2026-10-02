@@ -41,7 +41,7 @@
 - **git:** repository-local config that can execute commands (`core.fsmonitor`, hooks, external diff) is disabled for every git call sagent makes. Only the run page relaxes `style-src` to `'unsafe-inline'`, which xterm.js needs; `script-src` stays `'self'`.
 - **Test artifacts:** Playwright reports, screenshots and attachments are produced by the project under test and are treated as untrusted. They are served with a CSP `sandbox`, so they run in an opaque origin and cannot read sagent cookies.
 - **API tokens:** the JSON API accepts only bearer tokens, never the session cookie, so it needs no CSRF token and cannot be driven from another site. Only a SHA-256 hash of each token is stored. Tokens expire (90 days by default) and can be revoked. Failed token attempts count toward the IP lockout.
-- **Log retention:** run directories (terminal logs, prompts, agent output) are deleted after `runs.log_retention_days` (default 30). Usage statistics are kept.
+- **Log retention:** run directories (terminal logs, prompts, agent output) and detailed agent/terminal events are deleted after `runs.log_retention_days` (default 30). Lifecycle events and usage statistics are kept.
 
 ## Reporting a vulnerability
 
