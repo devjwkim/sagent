@@ -16,6 +16,10 @@
       <label>잠금 판정 구간(분) <input name="auth.lockout_window_min" value="{{ lockout_window }}" inputmode="numeric" size="4"></label>
       <label>Run 로그 보존(일, 0=무기한) <input name="runs.log_retention_days" value="{{ retention_days }}" inputmode="numeric" size="4"></label>
     </div>
+    <label>에이전트·테스트 명령 접두어 (JSON 배열, 선택)
+      <input name="command_prefix" value="{{ command_prefix }}" class="mono" placeholder='["sudo", "-n", "-u", "sagent-agent", "--"]'>
+    </label>
+    <p class="muted small">모든 에이전트와 테스트 프로세스가 이 명령을 거쳐 실행됩니다. 별도 OS 계정(sudo -u)이나 샌드박스(bwrap, firejail, docker)로 에이전트가 sagent 데이터 디렉터리를 읽지 못하게 할 때 사용합니다. 비워 두면 sagent 와 같은 계정으로 실행됩니다.</p>
     <button type="submit" class="primary">저장</button>
   </form>
 </section>

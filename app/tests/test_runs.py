@@ -194,3 +194,25 @@ def test_terminal_log_download(team_project, new_browser):
     v = new_browser()
     v.login("vic")
     assert v.get(f"/p/{slug}/runs/{run.id}/terminal.log").status_code == 403
+
+
+def test_command_prefix_wraps_every_process(team_project):
+    import json as _json
+
+    from sagent.core import settings
+    from sagent.core.errors import ValidationError
+
+    t = team_project
+    with pytest.raises(ValidationError):
+        settings.validate_command_prefix("sudo -u x")  # not JSON
+    with pytest.raises(ValidationError):
+        settings.validate_command_prefix('["definitely-not-a-binary-xyz"]')
+    settings.put("runs.command_prefix", settings.validate_command_prefix('["env", "SAGENT_SANDBOXED=yes"]'))
+    run = runs.wait(runs.start_command(t["dev"], t["project"].slug, "echo sandbox=$SAGENT_SANDBOXED").id,
+                    timeout=20, poll=0.3)
+    assert "sandbox=yes" in runs.terminal(t["dev"], run.id)[1]
+    agent = runs.start_agent(t["dev"], t["project"].slug, "hello")
+    cmd = _json.loads((runs.run_dir(agent.id) / "spec.json").read_text())["cmd"]
+    assert cmd[:2] == ["env", "SAGENT_SANDBOXED=yes"] and cmd[2] == "claude"
+    assert runs.wait(agent.id, timeout=30, poll=0.3).status == "SUCCESS"
+    settings.put("runs.command_prefix", "")

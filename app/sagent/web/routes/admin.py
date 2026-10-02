@@ -77,6 +77,11 @@ def server_settings():
             settings.put(
                 "projects.member_can_create", "1" if f.get("member_can_create") else "0", g.user
             )
+            try:
+                settings.put("runs.command_prefix", settings.validate_command_prefix(f.get("command_prefix", "")), g.user)
+            except SagentError as exc:
+                flash(str(exc), "error")
+                return redirect(url_for("admin.server_settings"))
             for key in ("auth.lockout_threshold", "auth.lockout_window_min", "runs.log_retention_days"):
                 val = f.get(key, "").strip()
                 if val.isdigit():
@@ -90,5 +95,6 @@ def server_settings():
         lockout_threshold=settings.get_int("auth.lockout_threshold"),
         lockout_window=settings.get_int("auth.lockout_window_min"),
         retention_days=settings.get_int("runs.log_retention_days"),
+        command_prefix=settings.get("runs.command_prefix"),
         checks=doctor.run_checks(),
     )

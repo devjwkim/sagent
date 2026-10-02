@@ -17,6 +17,9 @@ DEFAULTS: dict[str, str] = {
     "otel.endpoint": "",
     "otel.agent_env": "0",
     "otel.agent_headers": "0",
+    # JSON list prepended to every agent / test process, e.g. a sandbox:
+    # ["sudo", "-n", "-u", "sagent-agent", "--"]  or  ["bwrap", ..., "--"]
+    "runs.command_prefix": "",
 }
 
 SECRET_KEYS = {"otel.headers"}
@@ -46,6 +49,41 @@ def get_bool(key: str) -> bool:
 
 def get_lines(key: str) -> list[str]:
     return [line.strip() for line in get(key).splitlines() if line.strip()]
+
+
+def command_prefix() -> list[str]:
+    import json
+
+    raw = get("runs.command_prefix").strip()
+    if not raw:
+        return []
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        return []
+    return value if isinstance(value, list) and all(isinstance(x, str) and x for x in value) else []
+
+
+def validate_command_prefix(raw: str) -> str:
+    import json
+    import shutil
+
+    from sagent.core.errors import ValidationError
+
+    raw = (raw or "").strip()
+    if not raw:
+        return ""
+    try:
+        value = json.loads(raw)
+    except ValueError:
+        raise ValidationError('명령 접두어는 JSON 문자열 배열이어야 합니다. 예: ["sudo", "-n", "-u", "agent", "--"]') from None
+    if not isinstance(value, list) or not value or not all(isinstance(x, str) and x and "\x00" not in x for x in value):
+        raise ValidationError("명령 접두어는 비어 있지 않은 문자열 배열이어야 합니다.")
+    if len(value) > 60:
+        raise ValidationError("명령 접두어가 너무 깁니다.")
+    if not shutil.which(value[0]):
+        raise ValidationError(f"실행 파일을 찾을 수 없습니다: {value[0]}")
+    return json.dumps(value)
 
 
 def is_set(key: str) -> bool:

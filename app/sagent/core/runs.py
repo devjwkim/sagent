@@ -246,9 +246,12 @@ def _launch(run: Run, project, provider: str, cmd: list[str], *, stdin: Path | N
             extra.update(fn(run, project) or {})
         except Exception:  # an env provider must never block a run
             pass
+    from sagent.core import settings as settings_mod
+
+    prefix = settings_mod.command_prefix()  # optional sandbox / separate OS user
     spec = {
         "provider": provider,
-        "cmd": cmd,
+        "cmd": [*prefix, *cmd],
         "stdin": str(stdin) if stdin else None,
         "tty": tty,
         "env": {**extra, "SAGENT_RUN_ID": str(run.id), "SAGENT_PROJECT": project.slug, **(env or {})},

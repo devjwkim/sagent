@@ -16,7 +16,12 @@
 - Treat `developer` as "trusted operator of this server". The per-project roles organise collaboration and attribution between people who already trust each other. They are **not** a security boundary against a malicious developer.
 - Agent permission settings in `.sagent/harness.yaml` are mapped to the agent CLI's own flags: `--permission-mode` and `--allowedTools` for Claude, `--sandbox` for Codex. They are policy, not a sandbox.
 - Members cannot create projects unless an admin enables it (`projects.member_can_create`, off by default) and configures allowed directories. Project paths may not be nested in each other.
-- For untrusted users, run sagent under a dedicated OS account per team (one sagent instance each), or put the agent CLIs in a container. Separating agents from the sagent account is on the roadmap.
+- To separate agents from the sagent account, set **Server settings → command prefix**. It is a JSON argv that every agent and test process is started through. Examples:
+  - `["sudo", "-n", "-u", "sagent-agent", "--"]`: a separate OS account. Give it its own agent logins and no read access to `SAGENT_HOME`. The project directories must be writable by it.
+  - `["bwrap", "--dev-bind", "/", "/", "--tmpfs", "/home/you/.sagent", "--"]`: hides the sagent data directory.
+  - a `docker run …` wrapper.
+
+  sagent does not ship or verify the sandbox itself; test your prefix with `sagent run --command "ls ~/.sagent"`. Without a prefix, run one sagent instance per trusted team.
 - Members can only register projects inside directories an admin allows. Paths are resolved with `realpath` before checking, so symlinks cannot be used to escape.
 
 ## What sagent does
