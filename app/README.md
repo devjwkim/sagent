@@ -22,14 +22,40 @@ sagent does not ship its own LLM or coding agent. It runs the agents you already
 - At least one agent CLI, installed and already logged in on the server account: `claude` and/or `codex`
 - Optional: Node.js + Playwright for E2E tests
 
+## Install
+
+**One-line installer** (Linux / macOS). It creates its own virtualenv in `~/.local/share/sagent` and links `sagent` into `~/.local/bin`:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/devjwkim/sagent/main/app/scripts/install.sh | bash
+# options: --service (systemd user service), --extras otel, --port 7832, --upgrade, --uninstall [--purge]
+bash install.sh --help
+```
+
+**pipx**
+
+```bash
+pipx install "git+https://github.com/devjwkim/sagent.git#subdirectory=app"
+```
+
+**Wheel** (offline machines). Build it once, then copy the file:
+
+```bash
+cd app && python -m build --wheel          # → dist/sagent-<version>-py3-none-any.whl
+pip install dist/sagent-*.whl              # or: bash scripts/install.sh --source dist/sagent-*.whl
+```
+
+**From a checkout** (development): `cd app && pip install -e ".[dev]"`.
+
 ## Quick start
 
 ```bash
-pip install -e .            # from this directory
 sagent doctor               # check tmux / git / claude / codex / playwright
 sagent user create-admin    # first administrator (interactive password prompt)
 sagent web                  # http://127.0.0.1:7832
 ```
+
+With `install.sh --service`, `sagent web` runs as a systemd user service (`systemctl --user status sagent`). To keep it running after you log out, enable lingering for your account: `sudo loginctl enable-linger $USER`.
 
 `sagent web` uses the built-in threaded server, which also carries the WebSocket terminal. `--waitress` serves the pages with waitress but without the interactive terminal; terminal snapshots still update by polling.
 

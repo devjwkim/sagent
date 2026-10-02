@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,8 @@ name = "sagent"
 version = "0.1.0.dev0"
 description = "Multi-user control plane for CLI coding agents (Claude Code, Codex CLI): harness, loops, tests, AI review and LLMOps."
 readme = "README.md"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
   "Flask>=3.0,<4",
