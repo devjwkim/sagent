@@ -24,14 +24,24 @@ sagent does not ship its own LLM or coding agent. It runs the agents you already
 
 ## Install
 
-**One-line installer** (Linux / macOS):
+**On a server, from a git checkout** (recommended). Everything stays in the checkout folder:
+
+```bash
+git clone https://github.com/devjwkim/sagent.git /data/sagent
+bash /data/sagent/app/scripts/install.sh --host 0.0.0.0     # omit --host to allow only local access
+# → virtualenv /data/sagent/.venv (editable), data /data/sagent/data, command ~/.local/bin/sagent
+# update later:
+cd /data/sagent && git pull && bash app/scripts/install.sh --upgrade
+```
+
+**One-line installer** (Linux / macOS, without a checkout):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/devjwkim/sagent/main/app/scripts/install.sh | bash
 ```
 
 The installer:
-- creates its own virtualenv in `~/.local/share/sagent` and links `sagent` into `~/.local/bin`;
+- creates its own virtualenv (in the checkout, or `~/.local/share/sagent`) and installs a `sagent` command in `~/.local/bin` that always uses the right data folder;
 - **starts the server** on port 17832, as a systemd user service when available or as a background process otherwise;
 - prints a **one-time setup link**. Open it in a browser to create the first administrator.
 
