@@ -13,7 +13,7 @@ from sagent.core.errors import Conflict, Forbidden, NotFound, ValidationError
 
 ROLES = ("admin", "member")
 USERNAME_RE = re.compile(r"^[a-z0-9][a-z0-9_.-]{1,31}$")
-MIN_PASSWORD_LEN = 10
+MIN_PASSWORD_LEN = 9
 
 # Hash used to keep timing similar when the username does not exist.
 _DUMMY_HASH = generate_password_hash("sagent-dummy-password-for-timing")

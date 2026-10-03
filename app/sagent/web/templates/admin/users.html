@@ -45,7 +45,7 @@
             <form method="post" action="{{ url_for('admin.user_update', user_id=u.id) }}" class="row gap">
               {% include "_csrf.html" %}
               <input type="hidden" name="action" value="reset_password">
-              <input name="password" type="password" autocomplete="new-password" placeholder="임시 비밀번호" required minlength="10">
+              <input name="password" type="password" autocomplete="new-password" placeholder="임시 비밀번호" required minlength="{{ min_password_len }}">
               <button type="submit" class="small">초기화</button>
             </form>
           </details>
@@ -61,7 +61,7 @@
     {% include "_csrf.html" %}
     <input name="username" placeholder="아이디" required maxlength="32" autocomplete="off">
     <input name="display_name" placeholder="표시 이름" maxlength="64">
-    <input name="password" type="password" placeholder="임시 비밀번호 (10자 이상)" required minlength="10" autocomplete="new-password">
+    <input name="password" type="password" placeholder="임시 비밀번호 ({{ min_password_len }}자 이상)" required minlength="{{ min_password_len }}" autocomplete="new-password">
     <select name="role">{% for r in roles %}<option value="{{ r }}" {{ 'selected' if r == 'member' }}>{{ r }}</option>{% endfor %}</select>
     <button type="submit" class="primary">추가</button>
   </form>

@@ -40,7 +40,7 @@ def test_setup_validation_errors(app, new_browser):
     b.get(f"/setup?token={tok}")
     b.get("/setup")
     r = b.post("/setup", {"username": "boss", "password": "short", "confirm": "short"})
-    assert "10자 이상" in r.get_data(as_text=True)
+    assert "9자 이상" in r.get_data(as_text=True)
     r = b.post("/setup", {"username": "boss", "password": "First-Admin-Pass1", "confirm": "different-pass-1"})
     assert "일치하지 않습니다" in r.get_data(as_text=True)
     assert users.count_users() == 0

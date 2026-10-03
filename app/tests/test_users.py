@@ -99,3 +99,9 @@ def test_delete_user(app, make_user, workspace):
     assert users.find("alice") is None
     assert db.scalar("SELECT COUNT(*) FROM project_members WHERE user_id = ?", (alice.id,)) == 0
     assert users.authenticate("alice", PASSWORD, "203.0.113.7") is None
+
+
+def test_password_min_length_is_nine(app):
+    with pytest.raises(ValidationError, match="9자 이상"):
+        users.create(users.SYSTEM, "nina", "Abcdefg1")       # 8 chars
+    assert users.create(users.SYSTEM, "nina", "Abcdefg12")   # 9 chars

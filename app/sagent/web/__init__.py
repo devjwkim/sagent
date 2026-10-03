@@ -9,6 +9,7 @@ from werkzeug.exceptions import HTTPException
 from sagent import __version__, db
 from sagent.config import Config
 from sagent.core import audit, keystore, rbac, runs
+from sagent.core import users as users_mod
 from sagent.core.errors import Conflict, Forbidden, NotFound, SagentError, ValidationError
 from sagent.web import filters, security
 
@@ -89,6 +90,7 @@ def create_app(config: Config | None = None, *, testing: bool = False) -> Flask:
             "app_version": __version__,
             "role_labels": rbac.ROLE_LABELS,
             "project_tabs": PROJECT_TABS,
+            "min_password_len": users_mod.MIN_PASSWORD_LEN,
         }
 
     @app.after_request
